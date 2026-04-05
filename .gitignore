@@ -1,0 +1,15 @@
+# Python virtual environment
+backend/venv/
+backend/__pycache__/
+*.pyc
+
+# Environment Variables
+.env
+backend/.env
+
+# Mac / OS hidden files
+.DS_Store
+
+# Next.js build folders are already ignored in frontend-next/.gitignore
+
+mcp_config.json
