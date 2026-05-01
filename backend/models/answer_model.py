@@ -3,14 +3,14 @@ from typing import Optional, List
 from datetime import datetime
 
 class AnswerSubmit(BaseModel):
-    session_id: str
+    session_id: int
     question_id: str
     answer_text: Optional[str] = None
     # For audio uploads, we will use Form data instead of JSON payload
 
 class AnswerResponse(BaseModel):
-    id: str = Field(alias="_id")
-    session_id: str
+    id: int
+    session_id: int
     question_id: str
     question_text: str
     answer_text: str
@@ -24,4 +24,4 @@ class AnswerResponse(BaseModel):
     answered_at: datetime
 
     class Config:
-        populate_by_name = True
+        from_attributes = True

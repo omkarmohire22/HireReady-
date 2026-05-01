@@ -12,7 +12,7 @@ class UserLogin(BaseModel):
     password: str
 
 class UserResponse(BaseModel):
-    id: str = Field(alias="_id")
+    id: int
     email: EmailStr
     name: str
     role: Optional[str] = None
@@ -24,7 +24,7 @@ class UserResponse(BaseModel):
     updated_at: datetime
 
     class Config:
-        populate_by_name = True
+        from_attributes = True
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None

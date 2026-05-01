@@ -1,8 +1,38 @@
 from fastapi import APIRouter, HTTPException
-from database.connection import questions_col
 import pandas as pd
 import os
 from pydantic import BaseModel
+
+router = APIRouter(
+    prefix="/api/questions",
+    tags=["Questions (Admin)"]
+)
+
+class SeedRequest(BaseModel):
+    csv_filename: str = "flan_t5_curated.csv"
+
+@router.post("/seed")
+async def seed_questions_from_csv(request: SeedRequest):
+    """
+    Validates that the question CSV file exists and returns row count.
+    Questions are served dynamically by QuestionGeneratorService — no DB storage needed.
+    """
+    csv_path = os.path.join(os.path.dirname(__file__), "..", "dataset", request.csv_filename)
+
+    if not os.path.exists(csv_path):
+        raise HTTPException(status_code=404, detail=f"CSV file '{request.csv_filename}' not found.")
+
+    try:
+        df = pd.read_csv(csv_path)
+        return {
+            "status": "ok",
+            "message": f"Question bank '{request.csv_filename}' is valid.",
+            "total_questions": len(df),
+            "columns": list(df.columns),
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error reading CSV: {str(e)}")
+
 
 router = APIRouter(
     prefix="/api/questions",

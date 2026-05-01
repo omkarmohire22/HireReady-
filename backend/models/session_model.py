@@ -8,8 +8,8 @@ class SessionCreate(BaseModel):
     difficulty: str = "Medium"
 
 class SessionResponse(BaseModel):
-    id: str = Field(alias="_id")
-    user_id: str
+    id: int
+    user_id: int
     session_type: str
     target_role: str
     target_skills: List[str] = []
@@ -24,4 +24,4 @@ class SessionResponse(BaseModel):
     duration_seconds: int = 0
 
     class Config:
-        populate_by_name = True
+        from_attributes = True

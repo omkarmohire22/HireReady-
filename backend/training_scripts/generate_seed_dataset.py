@@ -139,9 +139,12 @@ for role, skills in SKILLS_BY_ROLE.items():
 
 df = pd.DataFrame(rows)
 df.drop_duplicates(subset=["output_question"], inplace=True)
-df = df.sample(frac=1, random_state=42).reset_index(drop=True)
+
+# Sample exactly 800 questions (or max available) for the demo
+target_size = min(800, len(df))
+df = df.sample(n=target_size, random_state=42).reset_index(drop=True)
 
 out_path = os.path.join(OUTPUT_DIR, "flan_t5_seed.csv")
 df.to_csv(out_path, index=False)
-print(f"✅ Generated {len(df)} seed rows → {out_path}")
+print(f"✅ Generated {len(df)} seed rows (Demo dataset size) → {out_path}")
 print(df[["role", "skill", "difficulty", "question_type"]].head(10))

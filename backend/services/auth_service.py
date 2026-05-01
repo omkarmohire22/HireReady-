@@ -5,8 +5,10 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
 
-from database.connection import users_col
+from database.connection import get_db
+from database.models import User as UserModel
 from models.user_model import UserResponse
 
 # Load from .env, with fallbacks
@@ -37,7 +39,7 @@ class AuthService:
         encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
         return encoded_jwt
 
-def get_current_user(token: str = Depends(oauth2_scheme)) -> UserResponse:
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> UserModel:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -51,14 +53,9 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> UserResponse:
     except JWTError:
         raise credentials_exception
         
-    from bson import ObjectId
-    try:
-        user = users_col.find_one({"_id": ObjectId(user_id)})
-    except Exception:
-        raise credentials_exception
+    user = db.query(UserModel).filter(UserModel.id == int(user_id)).first()
         
     if user is None:
         raise credentials_exception
         
-    user["_id"] = str(user["_id"])
-    return UserResponse(**user)
+    return user

@@ -8,9 +8,9 @@ class RecommendedResource(BaseModel):
     type: str
 
 class ReportResponse(BaseModel):
-    id: str = Field(alias="_id")
-    session_id: str
-    user_id: str
+    id: int
+    session_id: int
+    user_id: int
     generated_at: datetime
     overall_score: float
     skill_scores: Dict[str, float]
@@ -23,4 +23,4 @@ class ReportResponse(BaseModel):
     session_summary: str
 
     class Config:
-        populate_by_name = True
+        from_attributes = True

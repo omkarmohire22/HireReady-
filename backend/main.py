@@ -20,12 +20,12 @@ app.add_middleware(
 
 # Import and include routers
 from routers import resume, auth, interview, report, user, questions
-from database.init_indexes import init_db_indexes
+from database.connection import init_db
 
-# Initialize indexes on startup
+# Initialize tables on startup
 @app.on_event("startup")
 async def startup_event():
-    init_db_indexes()
+    init_db()
 
 app.include_router(auth.router)
 app.include_router(resume.router)
