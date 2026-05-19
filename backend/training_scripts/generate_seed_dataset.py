@@ -127,12 +127,18 @@ for role, skills in SKILLS_BY_ROLE.items():
                 chosen = random.sample(templates_for_key, min(2, len(templates_for_key)))
                 for tmpl in chosen:
                     question = fill(tmpl, skill, role)
+                    
+                    session_type = "technical"
+                    if qtype == "Design":
+                        session_type = "system_design"
+                    elif qtype == "Behavioural":
+                        session_type = "behavioural"
+
                     rows.append({
                         "role":            role,
                         "skill":           skill,
                         "difficulty":      difficulty,
-                        "question_type":   qtype,
-                        "input_prompt":    build_prompt(role, skill, difficulty, qtype),
+                        "session_type":    session_type,
                         "output_question": question,
                         "source":          "template",
                     })

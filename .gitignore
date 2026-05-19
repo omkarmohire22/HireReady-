@@ -10,6 +10,19 @@ backend/.env
 # Mac / OS hidden files
 .DS_Store
 
-# Next.js build folders are already ignored in frontend-next/.gitignore
+# Relational Database Files
+*.db
+backend/hireready.db
+hireready.db
 
+# Heavy Local Machine Learning models ( Whisper / T5 weights )
+backend/ml_models/
+
+# Upload folders & test audio files
+backend/uploads/
+backend/test.wav
+frontend-next/nextauth-error.log
+
+# IDE & Config
 mcp_config.json
+.vscode/

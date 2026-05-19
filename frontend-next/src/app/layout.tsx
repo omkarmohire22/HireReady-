@@ -4,6 +4,7 @@ import AppShell from '@/components/layout/AppShell';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import AosProvider from '@/components/layout/AosProvider';
 import SmoothScrollProvider from '@/components/layout/SmoothScrollProvider';
+import AuthSessionProvider from '@/components/auth/AuthSessionProvider';
 
 export const metadata: Metadata = {
   title: 'HireReady – AI Interview Prep',
@@ -14,13 +15,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" data-theme="dark">
       <body>
-        <ThemeProvider>
-          <SmoothScrollProvider>
-            <AosProvider>
-              <AppShell>{children}</AppShell>
-            </AosProvider>
-          </SmoothScrollProvider>
-        </ThemeProvider>
+        <AuthSessionProvider>
+          <ThemeProvider>
+            <SmoothScrollProvider>
+              <AosProvider>
+                <AppShell>{children}</AppShell>
+              </AosProvider>
+            </SmoothScrollProvider>
+          </ThemeProvider>
+        </AuthSessionProvider>
       </body>
     </html>
   );

@@ -72,3 +72,4 @@ class SkillMatcherService:
             "matched_skills": matched_skills,
             "missing_skills": missing_skills
         }
+    

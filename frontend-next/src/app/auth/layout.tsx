@@ -20,7 +20,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
     <div style={{
       display: 'flex', minHeight: '100vh',
       background: 'var(--bg)', color: 'var(--text)',
-      fontFamily: "'DM Sans', 'Inter', sans-serif",
+      fontFamily: 'var(--font-sans)',
     }}>
 
       {/* ── LEFT PANEL ── */}
@@ -59,12 +59,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           </Link>
 
           <h2 style={{
-            fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 32,
-            color: 'var(--text)', lineHeight: 1.2, marginBottom: 16,
+            fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 30,
+            color: 'var(--text)', lineHeight: 1.2, marginBottom: 14,
+            letterSpacing: '-0.03em',
           }}>
             Ace your next<br />
             <span style={{
-              background: 'linear-gradient(135deg, #6C47FF, #00E5FF)',
+              background: 'var(--grad)',
               WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
             }}>
               technical interview
@@ -79,13 +80,13 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
             {FEATURES.map(f => (
               <div key={f.text} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                 <div style={{
-                  width: 36, height: 36, borderRadius: 10, flexShrink: 0,
-                  background: 'rgba(108,71,255,0.1)', border: '1px solid rgba(108,71,255,0.2)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16,
+                  width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+                  background: 'var(--teal-dim)', border: '1px solid rgba(29,158,117,0.2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15,
                 }}>
                   {f.emoji}
                 </div>
-                <span style={{ fontSize: 14, color: 'var(--text-muted)' }}>{f.text}</span>
+                <span style={{ fontSize: 13.5, color: 'var(--text-muted)' }}>{f.text}</span>
               </div>
             ))}
           </div>
@@ -93,10 +94,10 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
 
         {/* Bottom stats */}
         <div style={{
-          display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16,
-          padding: 20, borderRadius: 16,
-          background: 'rgba(108,71,255,0.06)',
-          border: '1px solid rgba(108,71,255,0.15)',
+          display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12,
+          padding: 18, borderRadius: 12,
+          background: 'var(--teal-dim)',
+          border: '1px solid rgba(29,158,117,0.18)',
         }}>
           {[
             { value: '12K+', label: 'Active Users' },
@@ -105,11 +106,11 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           ].map(s => (
             <div key={s.label} style={{ textAlign: 'center' }}>
               <div style={{
-                fontFamily: "'Syne', sans-serif", fontWeight: 800, fontSize: 22,
-                background: 'linear-gradient(135deg, #6C47FF, #00E5FF)',
+                fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 20,
+                background: 'var(--grad)',
                 WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text',
               }}>{s.value}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.8px', marginTop: 2 }}>
+              <div style={{ fontSize: 10, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: 2 }}>
                 {s.label}
               </div>
             </div>
@@ -148,8 +149,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           <Link href="#" style={{ color: 'var(--text-muted)', textDecoration: 'underline' }}>Terms</Link>
           {' & '}
           <Link href="#" style={{ color: 'var(--text-muted)', textDecoration: 'underline' }}>Privacy Policy</Link>
-        </p>
-      </div>
+        </p>      </div>
     </div>
   );
 }

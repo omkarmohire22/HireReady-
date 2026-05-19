@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 class RecommendedResource(BaseModel):
@@ -14,7 +14,7 @@ class ReportResponse(BaseModel):
     generated_at: datetime
     overall_score: float
     skill_scores: Dict[str, float]
-    category_scores: Dict[str, float]
+    category_scores: Dict[str, Any]
     strengths: List[str]
     areas_to_improve: List[str]
     missing_skills: List[str]

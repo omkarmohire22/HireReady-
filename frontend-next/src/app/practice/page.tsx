@@ -6,6 +6,7 @@ import ResumeUpload from '@/components/practice/ResumeUpload';
 import SkillAlignment from '@/components/practice/SkillAlignment';
 import InterviewPanel from '@/components/practice/InterviewPanel';
 import { useRouter } from 'next/navigation';
+import { useInterviewSessionStore } from '@/lib/interviewSessionStore';
 
 const C = {
   primary: '#6C47FF',
@@ -18,13 +19,32 @@ export default function PracticePage() {
   const [step, setStep] = useState(1);
   const router = useRouter();
 
+  const { session } = useInterviewSessionStore();
+
+  const handleEnd = async () => {
+    const sessionId = session?.id;
+    try {
+      if (sessionId) {
+        const token = localStorage.getItem('token');
+        await fetch(`/api/interview/${sessionId}/end`, {
+          method: 'PUT',
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+      }
+    } catch (e) {
+      console.warn('End session error (non-fatal):', e);
+    }
+    router.push(sessionId ? `/report/${sessionId}` : '/report/latest');
+  };
+
   if (step === 4) {
     return (
       <div style={{ animation: 'fadeIn 0.3s ease' }}>
-        <InterviewPanel onEnd={() => router.push('/report')} />
+        <InterviewPanel onEnd={handleEnd} />
       </div>
     );
   }
+
 
   return (
     <div style={{ maxWidth: 800, margin: '0 auto', animation: 'fadeIn 0.3s ease' }} data-aos="fade-up">

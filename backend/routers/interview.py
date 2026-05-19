@@ -13,7 +13,7 @@ from models.answer_model import AnswerSubmit, AnswerResponse
 from services.auth_service import get_current_user
 from services.session_service import SessionService
 from services.feedback_scorer import FeedbackScorerService
-from services.question_generator import QuestionGeneratorService
+# QuestionGeneratorService imported lazily to prevent startup crashes from transformers/torch version bugs.
 
 router = APIRouter(
     prefix="/api/interview",
@@ -30,9 +30,15 @@ def get_scorer():
     return scorer
 
 def get_question_generator():
+    """Lazily import and instantiate QuestionGeneratorService to avoid startup crashes."""
     global question_generator
     if question_generator is None:
-        question_generator = QuestionGeneratorService()
+        try:
+            from services.question_generator import QuestionGeneratorService
+            question_generator = QuestionGeneratorService()
+        except Exception as e:
+            print(f"[WARNING] QuestionGeneratorService failed to load: {e}")
+            question_generator = None
     return question_generator
 
 # ── spaCy-based keyword extractor (noun chunks + named entities) ─────────────
@@ -95,8 +101,38 @@ async def start_session(
     Accepts real missing_skills from the frontend (derived from SkillMatcher).
     Falls back to sensible defaults if none are provided.
     """
-    # Use the real missing skills passed from SkillAlignment, or use defaults
-    missing_skills = session_data.missing_skills or ["Python", "Docker", "REST API"]
+    # Role-specific default skills (used when no resume was uploaded)
+    ROLE_DEFAULTS = {
+        "ML Engineer":        ["PyTorch", "Scikit-Learn", "Feature Engineering", "Model Deployment", "BERT"],
+        "Frontend Developer": ["React", "TypeScript", "CSS", "Redux", "Webpack"],
+        "Backend Engineer":   ["Python", "FastAPI", "PostgreSQL", "Docker", "REST API"],
+        "Full Stack Dev":     ["React", "Node.js", "MongoDB", "Docker", "GraphQL"],
+        "System Design":      ["Microservices", "Kafka", "Redis", "Kubernetes", "Load Balancing"],
+        "DevOps Engineer":    ["Docker", "Kubernetes", "CI/CD", "Terraform", "AWS"],
+        "Data Analyst":       ["SQL", "Pandas", "Tableau", "Statistics", "ETL"],
+    }
+    missing_skills = (
+        session_data.missing_skills
+        or ROLE_DEFAULTS.get(session_data.target_role, ["Python", "System Design", "Problem Solving"])
+    )
+
+    # Feature Gating: Free users get 2 sessions max
+    from database.models import Session as SessionModel
+    from datetime import datetime, timedelta, timezone
+
+    if current_user.subscription != "pro":
+        # Check sessions created in the last 30 days
+        thirty_days_ago = datetime.now(timezone.utc) - timedelta(days=30)
+        recent_sessions_count = db.query(SessionModel).filter(
+            SessionModel.user_id == current_user.id,
+            SessionModel.created_at >= thirty_days_ago
+        ).count()
+        
+        if recent_sessions_count >= 2:
+            raise HTTPException(
+                status_code=403, 
+                detail="Free plan limit reached (2 mock interviews per month). Please upgrade to Pro to continue."
+            )
 
     session_id = SessionService.create_session(
         db=db,
@@ -114,7 +150,7 @@ async def start_session(
 
 @router.get("/{session_id}/next")
 async def get_next_question(
-    session_id: int,
+    session_id: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -122,8 +158,21 @@ async def get_next_question(
     Return the next AI-generated question using the FLAN-T5 model.
     Cycles through the user's identified missing skills.
     """
-    session = SessionService.get_session(db, session_id)
+    session = None
+    if session_id == "demo123":
+        from database.models import Session as SessionModel
+        session = db.query(SessionModel).filter(SessionModel.user_id == current_user.id).order_by(SessionModel.created_at.desc()).first()
+    else:
+        try:
+            session = SessionService.get_session(db, int(session_id))
+        except ValueError:
+            pass
+            
     if not session or session.user_id != current_user.id:
+        from database.models import Session as SessionModel
+        session = db.query(SessionModel).filter(SessionModel.user_id == current_user.id).order_by(SessionModel.created_at.desc()).first()
+        
+    if not session:
         raise HTTPException(status_code=404, detail="Session not found")
         
     if session.status == "completed":
@@ -131,35 +180,61 @@ async def get_next_question(
         
     missing_skills = session.missing_skills or []
     questions_answered = session.questions_answered or 0
-    
-    if questions_answered >= len(missing_skills):
+    difficulty = session.difficulty or "Medium"
+    stype = session.session_type or "technical"
+
+    if not missing_skills or questions_answered >= len(missing_skills):
         return {"message": "All questions answered. Ready to end session.", "done": True}
-        
+
     skill_to_test = missing_skills[questions_answered]
-    
-    # Generate question using FLAN-T5
-    gen_result = get_question_generator().generate_question(
-        skill=skill_to_test,
-        role=session.target_role
-    )
-    question_text = gen_result.get(
-        "generated_question",
-        f"Can you explain your experience with {skill_to_test}?"
-    )
-    
+
+    # ── Anti-repetition: fetch all already-asked question texts for this session
+    # CRITICAL: use session.id (int), NOT session_id (str from URL path)
+    from database.models import Answer as AnswerModel
+    asked_rows = db.query(AnswerModel.question_text).filter(
+        AnswerModel.session_id == session.id
+    ).all()
+    exclude_list = [row[0] for row in asked_rows if row[0]]
+
+    # ── Generate question: bank → CSV → FLAN-T5 → template (all difficulty-aware)
+    generator = get_question_generator()
+    if generator is not None:
+        gen_result = generator.generate_question(
+            skill=skill_to_test,
+            role=session.target_role,
+            exclude=exclude_list,
+            difficulty=difficulty,
+            session_type=stype,
+        )
+        question_text = gen_result.get(
+            "generated_question",
+            f"Walk me through your experience with {skill_to_test} as a {session.target_role}."
+        )
+        source_difficulty = gen_result.get("difficulty", difficulty)
+    else:
+        # Hardcoded fallback when model service is completely unavailable
+        difficulty_prompts = {
+            "Easy":   f"What is {skill_to_test} and why is it important for a {session.target_role}?",
+            "Medium": f"You are a {session.target_role}. Walk me through integrating {skill_to_test} into a production system.",
+            "Hard":   f"You are a {session.target_role}. A production incident has been traced to your {skill_to_test} implementation. Diagnose and resolve it.",
+        }
+        question_text = difficulty_prompts.get(difficulty, difficulty_prompts["Medium"])
+        source_difficulty = difficulty
+
     return {
-        "question_id": f"q_{questions_answered}",
-        "skill": skill_to_test,
-        "question_text": question_text,
-        "total_questions": len(missing_skills),
-        "question_number": questions_answered + 1,
-        "done": False
+        "question_id":      f"q_{questions_answered + 1}",
+        "skill":            skill_to_test,
+        "question_text":    question_text,
+        "difficulty":       source_difficulty,
+        "total_questions":  len(missing_skills),
+        "question_number":  questions_answered + 1,
+        "done":             False,
     }
 
 
 @router.post("/{session_id}/answer", response_model=AnswerResponse)
 async def submit_answer(
-    session_id: int,
+    session_id: str,
     answer_data: AnswerSubmit,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -168,8 +243,21 @@ async def submit_answer(
     Score and save the user's transcribed answer for a question.
     Keywords are derived from the question text using NLP instead of mock values.
     """
-    session = SessionService.get_session(db, session_id)
+    session = None
+    if session_id == "demo123":
+        from database.models import Session as SessionModel
+        session = db.query(SessionModel).filter(SessionModel.user_id == current_user.id).order_by(SessionModel.created_at.desc()).first()
+    else:
+        try:
+            session = SessionService.get_session(db, int(session_id))
+        except ValueError:
+            pass
+            
     if not session or session.user_id != current_user.id:
+        from database.models import Session as SessionModel
+        session = db.query(SessionModel).filter(SessionModel.user_id == current_user.id).order_by(SessionModel.created_at.desc()).first()
+        
+    if not session:
         raise HTTPException(status_code=404, detail="Session not found")
         
     missing_skills = session.missing_skills or ["General"]
@@ -189,7 +277,7 @@ async def submit_answer(
     
     # Save the answer with the real question text
     new_answer = AnswerModel(
-        session_id=session_id,
+        session_id=session.id,
         user_id=current_user.id,
         question_id=answer_data.question_id,
         question_text=question_text,
@@ -200,12 +288,35 @@ async def submit_answer(
         improvements=score_result["improvements"],
         keywords_used=score_result["keywords_used"],
         keywords_missed=score_result["keywords_missed"],
-        filler_word_count=score_result["filler_word_count"]
+        filler_word_count=score_result["filler_word_count"],
+        communication_metrics=answer_data.communication_metrics or {}
     )
     db.add(new_answer)
     
+    # AI Feedback Loop: Update Question analytics
+    from database.models import Question as QuestionModel
+    q_record = db.query(QuestionModel).filter(QuestionModel.question_text == question_text).first()
+    if not q_record:
+        q_record = QuestionModel(
+            role=session.target_role,
+            skill=skill_to_test,
+            difficulty=session.difficulty,
+            question_type="Generated",
+            question_text=question_text,
+            expected_keywords=expected_keywords,
+            source="flan-t5",
+            times_used=0,
+            avg_score_received=0.0
+        )
+        db.add(q_record)
+        db.flush() # get ID without full commit
+        
+    q_record.times_used = (q_record.times_used or 0) + 1
+    current_avg_score = q_record.avg_score_received or 0.0
+    q_record.avg_score_received = ((current_avg_score * (q_record.times_used - 1)) + float(score_result["score"])) / q_record.times_used
+    
     # Increment the answered-questions counter on the session
-    session.questions_answered += 1
+    session.questions_answered = (session.questions_answered or 0) + 1
     
     db.commit()
     db.refresh(new_answer)
@@ -215,14 +326,27 @@ async def submit_answer(
 
 @router.put("/{session_id}/end")
 async def end_session(
-    session_id: int,
+    session_id: str,
     current_user: UserModel = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     """Mark the session as completed."""
-    session = SessionService.get_session(db, session_id)
+    session = None
+    if session_id == "demo123":
+        from database.models import Session as SessionModel
+        session = db.query(SessionModel).filter(SessionModel.user_id == current_user.id).order_by(SessionModel.created_at.desc()).first()
+    else:
+        try:
+            session = SessionService.get_session(db, int(session_id))
+        except ValueError:
+            pass
+            
     if not session or session.user_id != current_user.id:
+        from database.models import Session as SessionModel
+        session = db.query(SessionModel).filter(SessionModel.user_id == current_user.id).order_by(SessionModel.created_at.desc()).first()
+        
+    if not session:
         raise HTTPException(status_code=404, detail="Session not found")
         
-    SessionService.end_session(db, session_id)
+    SessionService.end_session(db, session.id)
     return {"message": "Session completed successfully"}

@@ -23,25 +23,31 @@ const C = {
 };
 
 export default function CommunicationFeedback({ metrics }: CommunicationFeedbackProps) {
+  const isTextOnly = metrics.wpm === 0;
+
   const getWpmStatus = (wpm: number) => {
+    if (wpm === 0) return { color: 'var(--text-subtle)', label: 'N/A', icon: '-' };
     if (wpm >= 120 && wpm <= 150) return { color: C.success, label: 'Ideal', icon: '✓' };
     if (wpm < 120) return { color: C.warning, label: 'Slow', icon: '↓' };
     return { color: C.error, label: 'Fast', icon: '↑' };
   };
 
   const getFillerStatus = (count: number) => {
+    if (isTextOnly) return { color: 'var(--text-subtle)', label: 'N/A', icon: '-' };
     if (count <= 2) return { color: C.success, label: 'Excellent', icon: '✓' };
     if (count <= 5) return { color: C.warning, label: 'Good', icon: '~' };
     return { color: C.error, label: 'Needs work', icon: '!' };
   };
 
   const getEnergyStatus = (energy: number) => {
+    if (isTextOnly) return { color: 'var(--text-subtle)', label: 'N/A', icon: '-' };
     if (energy >= 70) return { color: C.success, label: 'Strong', icon: '✓' };
     if (energy >= 50) return { color: C.warning, label: 'Moderate', icon: '~' };
     return { color: C.error, label: 'Low', icon: '↓' };
   };
 
   const getToneStatus = (tone: number) => {
+    if (isTextOnly) return { color: 'var(--text-subtle)', label: 'N/A', icon: '-' };
     if (tone >= 7) return { color: C.success, label: 'Confident', icon: '✓' };
     if (tone >= 5) return { color: C.warning, label: 'Neutral', icon: '~' };
     return { color: C.error, label: 'Hesitant', icon: '!' };
@@ -128,7 +134,7 @@ export default function CommunicationFeedback({ metrics }: CommunicationFeedback
         </div>
       )}
 
-      {progress && (
+      {progress && !isTextOnly && (
         <div style={{
           height: 4,
           background: 'var(--elevated)',
@@ -196,9 +202,9 @@ export default function CommunicationFeedback({ metrics }: CommunicationFeedback
         />
         <MetricCard
           label="Long Pauses"
-          value={metrics.longPauses}
+          value={isTextOnly ? 0 : metrics.longPauses}
           unit="detected"
-          status={{
+          status={isTextOnly ? { color: 'var(--text-subtle)', label: 'N/A', icon: '-' } : {
             color: metrics.longPauses === 0 ? C.success : metrics.longPauses <= 2 ? C.warning : C.error,
             label: metrics.longPauses === 0 ? 'None' : 'Some',
             icon: metrics.longPauses === 0 ? '✓' : '!',
@@ -252,40 +258,48 @@ export default function CommunicationFeedback({ metrics }: CommunicationFeedback
           lineHeight: 1.7,
           margin: 0,
         }}>
-          {metrics.wpm < 120 && (
-            <li style={{ marginBottom: 8 }}>
-              <span style={{ color: C.warning, fontWeight: 600 }}>Speaking pace:</span> Increase speed slightly (120-150 WPM) to engage the interviewer
+          {isTextOnly ? (
+            <li style={{ color: 'var(--text-subtle)', listStyleType: 'none', marginLeft: -24 }}>
+              No audio tips available for text-only mock interviews. Keep using the practice arena to refine your answers!
             </li>
-          )}
-          {metrics.wpm > 150 && (
-            <li style={{ marginBottom: 8 }}>
-              <span style={{ color: C.warning, fontWeight: 600 }}>Speaking pace:</span> Slow down to let interviewer take notes
-            </li>
-          )}
-          {metrics.fillerWords > 5 && (
-            <li style={{ marginBottom: 8 }}>
-              <span style={{ color: C.warning, fontWeight: 600 }}>Filler words:</span> Pause instead of saying "um", "uh", or "like"
-            </li>
-          )}
-          {metrics.longPauses > 2 && (
-            <li style={{ marginBottom: 8 }}>
-              <span style={{ color: C.warning, fontWeight: 600 }}>Pauses:</span> Practice structured answers to reduce hesitation
-            </li>
-          )}
-          {metrics.voiceEnergy < 50 && (
-            <li style={{ marginBottom: 8 }}>
-              <span style={{ color: C.warning, fontWeight: 600 }}>Voice energy:</span> Speak with more confidence and energy
-            </li>
-          )}
-          {metrics.confidenceTone < 6 && (
-            <li>
-              <span style={{ color: C.warning, fontWeight: 600 }}>Tone:</span> Work on sounding more definitive and confident
-            </li>
-          )}
-          {metrics.wpm >= 120 && metrics.wpm <= 150 && metrics.fillerWords <= 2 && metrics.voiceEnergy >= 70 && (
-            <li style={{ color: C.success, fontWeight: 600 }}>
-              ✓ Excellent communication! Keep it up.
-            </li>
+          ) : (
+            <>
+              {metrics.wpm < 120 && (
+                <li style={{ marginBottom: 8 }}>
+                  <span style={{ color: C.warning, fontWeight: 600 }}>Speaking pace:</span> Increase speed slightly (120-150 WPM) to engage the interviewer
+                </li>
+              )}
+              {metrics.wpm > 150 && (
+                <li style={{ marginBottom: 8 }}>
+                  <span style={{ color: C.warning, fontWeight: 600 }}>Speaking pace:</span> Slow down to let interviewer take notes
+                </li>
+              )}
+              {metrics.fillerWords > 5 && (
+                <li style={{ marginBottom: 8 }}>
+                  <span style={{ color: C.warning, fontWeight: 600 }}>Filler words:</span> Pause instead of saying "um", "uh", or "like"
+                </li>
+              )}
+              {metrics.longPauses > 2 && (
+                <li style={{ marginBottom: 8 }}>
+                  <span style={{ color: C.warning, fontWeight: 600 }}>Pauses:</span> Practice structured answers to reduce hesitation
+                </li>
+              )}
+              {metrics.voiceEnergy < 50 && (
+                <li style={{ marginBottom: 8 }}>
+                  <span style={{ color: C.warning, fontWeight: 600 }}>Voice energy:</span> Speak with more confidence and energy
+                </li>
+              )}
+              {metrics.confidenceTone < 6 && (
+                <li>
+                  <span style={{ color: C.warning, fontWeight: 600 }}>Tone:</span> Work on sounding more definitive and confident
+                </li>
+              )}
+              {metrics.wpm >= 120 && metrics.wpm <= 150 && metrics.fillerWords <= 2 && metrics.voiceEnergy >= 70 && (
+                <li style={{ color: C.success, fontWeight: 600 }}>
+                  ✓ Excellent communication! Keep it up.
+                </li>
+              )}
+            </>
           )}
         </ul>
       </div>
@@ -314,15 +328,21 @@ export default function CommunicationFeedback({ metrics }: CommunicationFeedback
             fontWeight: 700,
             color: 'var(--text-high)',
           }}>
-            {Math.round(
-              (metrics.wpm >= 120 && metrics.wpm <= 150 ? 10 : metrics.wpm >= 100 && metrics.wpm <= 160 ? 7 : 5) * 0.25 +
-              (metrics.fillerWords <= 2 ? 10 : metrics.fillerWords <= 5 ? 7 : 5) * 0.25 +
-              (metrics.longPauses === 0 ? 10 : metrics.longPauses <= 2 ? 7 : 5) * 0.25 +
-              metrics.confidenceTone * 0.25
-            )} / 100
+            {isTextOnly ? (
+              <span>N/A (Text-Only)</span>
+            ) : (
+              <span>
+                {Math.round(
+                  ((metrics.wpm >= 120 && metrics.wpm <= 150 ? 10 : metrics.wpm >= 100 && metrics.wpm <= 160 ? 7 : 5) * 0.25 +
+                  (metrics.fillerWords <= 2 ? 10 : metrics.fillerWords <= 5 ? 7 : 5) * 0.25 +
+                  (metrics.longPauses === 0 ? 10 : metrics.longPauses <= 2 ? 7 : 5) * 0.25 +
+                  metrics.confidenceTone * 0.25) * 10
+                )} / 100
+              </span>
+            )}
           </div>
         </div>
-        <CheckCircle2 size={32} color={C.success} />
+        <CheckCircle2 size={32} color={isTextOnly ? 'var(--text-subtle)' : C.success} />
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
-import { Code2, Layers, Activity, Target, Play, ShieldAlert, Loader2, AlertCircle, Brain, Server } from 'lucide-react';
+import { Code2, Layers, Activity, Target, Play, ShieldAlert, Loader2, AlertCircle, Brain, Server, Terminal } from 'lucide-react';
 import { useAuthStore } from '@/lib/authStore';
 import { useInterviewSessionStore } from '@/lib/interviewSessionStore';
 
@@ -26,9 +26,9 @@ const DIFFICULTIES = [
 ];
 
 const INTERVIEW_TYPES = [
-  { label: 'Technical',     value: 'technical',     emoji: '💻' },
-  { label: 'Behavioural',   value: 'behavioural',   emoji: '🧠' },
-  { label: 'System Design', value: 'system_design', emoji: '🏗️' },
+  { label: 'Technical',     value: 'technical',     icon: Terminal },
+  { label: 'Behavioural',   value: 'behavioural',   icon: Brain },
+  { label: 'System Design', value: 'system_design', icon: Layers },
 ];
 
 const C = { primary: '#6C47FF', border: 'var(--border)' };
@@ -42,6 +42,7 @@ interface MatchResult {
 
 export default function SkillAlignment({ onNext, onBack }: SkillAlignmentProps) {
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
+  const [customRole, setCustomRole] = useState('');
   const [selectedDifficulty, setSelectedDifficulty] = useState('Medium');
   const [selectedType, setSelectedType] = useState('technical');
 
@@ -63,7 +64,8 @@ export default function SkillAlignment({ onNext, onBack }: SkillAlignmentProps) 
     setMatchResult(null);
     try {
       // Mock match since we didn't migrate resume/match yet, or use the real one if it exists
-      const res = await fetch('http://localhost:8000/api/resume/match', {
+      const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api/backend";
+      const res = await fetch(`${BASE_URL}/resume/match`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -93,7 +95,8 @@ export default function SkillAlignment({ onNext, onBack }: SkillAlignmentProps) 
     if (!selectedRole) return;
     setStarting(true);
     try {
-      const missingSkills = matchResult?.missing_skills ?? [];
+      const rawMissing = matchResult?.missing_skills ?? [];
+      const missingSkills = rawMissing.map(s => typeof s === 'string' ? s : (s as any).skill);
       const { api } = await import('@/lib/api');
       
       const sessionData = await api.startSession({
@@ -120,10 +123,12 @@ export default function SkillAlignment({ onNext, onBack }: SkillAlignmentProps) 
     }
   };
 
-  const canProceed = !!selectedRole && !matchLoading && !starting;
   const matchPct = matchResult?.overall_match_score ?? null;
+  const hasMinSkills = matchPct === null || matchPct >= 30;
+  const canProceed = !!selectedRole && !matchLoading && !starting && hasMinSkills;
+  
   const matchColor = matchPct !== null
-    ? (matchPct >= 80 ? '#00D97E' : matchPct >= 50 ? '#FFB547' : '#FF4D6A')
+    ? (matchPct >= 80 ? '#00D97E' : matchPct >= 30 ? '#FFB547' : '#FF4D6A')
     : '#6C47FF';
 
   return (
@@ -149,7 +154,10 @@ export default function SkillAlignment({ onNext, onBack }: SkillAlignmentProps) 
               <motion.div
                 key={r.role}
                 className="card"
-                onClick={() => setSelectedRole(r.role)}
+                onClick={() => {
+                  setSelectedRole(r.role);
+                  setCustomRole('');
+                }}
                 style={{
                   padding: 16, cursor: 'pointer', transition: 'all 0.2s',
                   borderColor: isSelected ? C.primary : 'var(--border)',
@@ -180,6 +188,26 @@ export default function SkillAlignment({ onNext, onBack }: SkillAlignmentProps) 
               </motion.div>
             );
           })}
+        </div>
+        {/* Custom Role Input */}
+        <div style={{ marginTop: 12 }}>
+          <input 
+            type="text" 
+            placeholder="Or type a custom role (e.g., Blockchain Developer)"
+            value={customRole}
+            onChange={(e) => {
+              setCustomRole(e.target.value);
+              setSelectedRole(e.target.value);
+            }}
+            onFocus={() => {
+              if (customRole) setSelectedRole(customRole);
+            }}
+            style={{
+              width: '100%', padding: '12px 16px', borderRadius: 10, fontSize: 14,
+              background: 'var(--card-bg)', border: `1px solid ${selectedRole === customRole && customRole ? C.primary : 'var(--border)'}`,
+              color: 'var(--text-high)', outline: 'none', transition: 'border-color 0.2s'
+            }}
+          />
         </div>
       </div>
 
@@ -227,15 +255,17 @@ export default function SkillAlignment({ onNext, onBack }: SkillAlignmentProps) 
                   key={t.value}
                   onClick={() => setSelectedType(t.value)}
                   style={{
-                    flex: 1, padding: '10px 6px', borderRadius: 10, border: `1px solid ${isActive ? C.primary + '66' : 'var(--border)'}`,
+                    flex: 1, padding: '12px 6px', borderRadius: 10, border: `1px solid ${isActive ? C.primary + '66' : 'var(--border)'}`,
                     background: isActive ? 'rgba(108,71,255,0.1)' : 'var(--card-bg)',
-                    cursor: 'pointer', transition: 'all 0.2s', textAlign: 'center',
+                    cursor: 'pointer', transition: 'all 0.2s', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center'
                   }}
                   whileHover={hoverLift}
                   whileTap={tapDown}
                   transition={{ type: 'spring', stiffness: 240, damping: 18 }}
                 >
-                  <div style={{ fontSize: 18, marginBottom: 2 }}>{t.emoji}</div>
+                  <div style={{ marginBottom: 6, display: 'flex', justifyContent: 'center' }}>
+                    <t.icon size={20} color={isActive ? C.primary : 'var(--text-muted)'} />
+                  </div>
                   <div style={{ fontWeight: 600, fontSize: 11, color: isActive ? C.primary : 'var(--text-muted)' }}>{t.label}</div>
                 </motion.button>
               );
@@ -273,13 +303,22 @@ export default function SkillAlignment({ onNext, onBack }: SkillAlignmentProps) 
               {matchResult.note && (
                 <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 8, opacity: 0.7 }}>{matchResult.note}</p>
               )}
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {matchResult.missing_skills.map(skill => (
-                  <span key={skill} style={{ fontSize: 12, fontWeight: 500, background: 'var(--elevated)', border: '1px solid var(--border)', padding: '4px 10px', borderRadius: 20, color: 'var(--text-muted)' }}>
-                    {skill}
-                  </span>
-                ))}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                {matchResult.missing_skills.map((skill, index) => {
+                  const skillName = typeof skill === 'string' ? skill : (skill as any).skill;
+                  return (
+                    <span key={`${skillName}-${index}`} style={{ fontSize: 12, fontWeight: 500, background: 'var(--elevated)', border: '1px solid var(--border)', padding: '4px 10px', borderRadius: 20, color: 'var(--text-muted)' }}>
+                      {skillName}
+                    </span>
+                  );
+                })}
               </div>
+              {!hasMinSkills && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#FF4D6A', fontSize: 13, marginTop: 12, padding: '10px 12px', background: 'rgba(255,77,106,0.1)', borderRadius: 8, border: '1px solid rgba(255,77,106,0.2)' }}>
+                  <AlertCircle size={14} />
+                  Your skill match is below 30%. Please select a different role or upload a more relevant resume.
+                </div>
+              )}
             </>
           ) : null}
         </div>

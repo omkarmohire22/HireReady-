@@ -13,6 +13,7 @@ export default function ResumeUpload({ onNext }: ResumeUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [rejected, setRejected] = useState(false);
   const [extractedSkills, setExtractedSkills] = useState<string[]>([]);
   const reduceMotion = useReducedMotion();
   const hoverLift = reduceMotion ? undefined : { y: -2, scale: 1.01 };
@@ -24,6 +25,7 @@ export default function ResumeUpload({ onNext }: ResumeUploadProps) {
     if (!file) return;
     setAnalyzing(true);
     setError(null);
+    setRejected(false);
 
     try {
       const formData = new FormData();
@@ -39,14 +41,19 @@ export default function ResumeUpload({ onNext }: ResumeUploadProps) {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || `Upload failed (${res.status})`);
+        const detail = errData.detail || `Upload failed (${res.status})`;
+        // 422 = validation rejection (not a resume)
+        if (res.status === 422) {
+          setRejected(true);
+          setFile(null);
+        }
+        throw new Error(detail);
       }
 
       const data = await res.json();
       const skills: string[] = data?.data?.skills ?? [];
       setExtractedSkills(skills);
 
-      // Short delay so user can see the "Extracted X skills" confirmation
       setTimeout(() => {
         setAnalyzing(false);
         onNext();
@@ -88,7 +95,7 @@ export default function ResumeUpload({ onNext }: ResumeUploadProps) {
                 <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>Ready for analysis</div>
                 <motion.button
                   className="btn-ghost"
-                  onClick={() => { setFile(null); setError(null); setExtractedSkills([]); }}
+                  onClick={() => { setFile(null); setError(null); setRejected(false); setExtractedSkills([]); }}
                   style={{ padding: '6px 14px', fontSize: 13 }}
                   whileHover={hoverLift}
                   whileTap={tapDown}
@@ -137,6 +144,17 @@ export default function ResumeUpload({ onNext }: ResumeUploadProps) {
               </div>
               <p style={{ fontSize: 14, fontWeight: 600, color: '#6C47FF' }}>Parsing with AI NER…</p>
               <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>spaCy + pdfminer extracting skills</p>
+            </div>
+          ) : rejected ? (
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: 36, marginBottom: 8 }}>🚫</div>
+              <p style={{ fontSize: 14, fontWeight: 700, color: '#FF4D6A', marginBottom: 6 }}>Not a Resume</p>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                {error || 'This document is not a CV or resume.'}
+              </p>
+              <p style={{ fontSize: 11, color: 'var(--text-subtle)', marginTop: 8 }}>
+                Please upload your professional resume in PDF format.
+              </p>
             </div>
           ) : error ? (
             <div style={{ textAlign: 'center', color: '#FF4D6A' }}>

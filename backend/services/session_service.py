@@ -13,9 +13,7 @@ class SessionService:
             missing_skills=missing_skills,
             difficulty=difficulty,
             status="active",
-            total_questions=len(missing_skills) if missing_skills else 5,
             questions_answered=0,
-            overall_score=0.0
         )
         db.add(session_doc)
         db.commit()
@@ -31,15 +29,9 @@ class SessionService:
         session = db.query(SessionModel).filter(SessionModel.id == session_id).first()
         if not session:
             return None
-            
-        ended_at = datetime.utcnow()
-        if session.started_at:
-            duration = (ended_at - session.started_at).total_seconds()
-        else:
-            duration = 0
-            
+
         session.status = "completed"
-        session.ended_at = ended_at
-        
+        session.ended_at = datetime.utcnow()
+
         db.commit()
         return True

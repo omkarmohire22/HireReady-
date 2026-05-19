@@ -57,5 +57,36 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         
     if user is None:
         raise credentials_exception
+
+    # Dynamic auto-scrub of noise terms from resume skills directory
+    if user.resume_skills:
+        NOISE_SKILLS = [
+            "university", "institute", "college", "school", "board", 
+            "certificate", "secondary", "state", "pvt", "ltd", "inc", 
+            "simulation", "completed", "projects", "fitmate", "whatsapp",
+            "microsoft", "deloitte", "devfolio", "agrohub", "dubssc", "vidyapeeth",
+            "mumbai", "dapoli", "ratnagiri", "linkedin", "ssc", "hsc",
+            "certifications", "job", "mca", "copilot", "github copilot",
+            "resume", "curriculum", "vitae", "work", "experience", "education",
+            "personal", "contact", "address", "phone", "email", "hobby", "hobbies",
+            "candidate", "evaluator", "interviewer", "company", "client", "pune",
+            "maharashtra", "india", "country", "city", "town", "district", "office", "powerpoint", "excel"
+        ]
+        cleaned = []
+        changed = False
+        for skill in user.resume_skills:
+            skill_lower = skill.lower()
+            if any(noise in skill_lower for noise in NOISE_SKILLS):
+                changed = True
+                continue
+            if len(skill) < 2 or len(skill) > 25:
+                changed = True
+                continue
+            cleaned.append(skill)
+        
+        if changed:
+            user.resume_skills = cleaned
+            db.commit()
+            db.refresh(user)
         
     return user

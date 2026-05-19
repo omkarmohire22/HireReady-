@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
 
@@ -16,12 +16,9 @@ class SessionResponse(BaseModel):
     missing_skills: List[str] = []
     difficulty: str
     status: str
-    started_at: datetime
+    created_at: Optional[datetime] = None
     ended_at: Optional[datetime] = None
-    total_questions: int = 0
     questions_answered: int = 0
-    overall_score: float = 0.0
-    duration_seconds: int = 0
 
     class Config:
         from_attributes = True

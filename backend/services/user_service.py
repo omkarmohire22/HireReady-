@@ -52,7 +52,6 @@ class UserService:
 
         result = []
         for s in sessions:
-            # Grab associated report if it exists
             report = db.query(ReportModel).filter(
                 ReportModel.session_id == s.id
             ).first()
@@ -78,3 +77,79 @@ class UserService:
                 "comm_score":   round(report.category_scores.get("communication", 0), 1) if report and report.category_scores else 0,
             })
         return result
+
+    @staticmethod
+    def get_all_sessions(db: Session, user_id: int, skip: int = 0, limit: int = 50):
+        """Return ALL sessions for a user with their report scores, newest first."""
+        sessions = (
+            db.query(SessionModel)
+            .filter(SessionModel.user_id == user_id)
+            .order_by(SessionModel.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+            .all()
+        )
+
+        result = []
+        for s in sessions:
+            report = db.query(ReportModel).filter(
+                ReportModel.session_id == s.id
+            ).first()
+
+            now = datetime.now(timezone.utc)
+            date_str = ""
+            ago = "—"
+            if s.created_at:
+                created = s.created_at
+                if created.tzinfo is None:
+                    created = created.replace(tzinfo=timezone.utc)
+                delta_days = (now - created).days
+                ago = f"{delta_days}d ago" if delta_days > 0 else "Today"
+                date_str = s.created_at.strftime("%Y-%m-%d")
+
+            duration_str = "—"
+            if s.created_at and s.ended_at:
+                mins = int((s.ended_at - s.created_at).total_seconds() / 60)
+                duration_str = f"{mins} min"
+
+            result.append({
+                "session_id":         s.id,
+                "role":               s.target_role or "—",
+                "session_type":       s.session_type or "technical",
+                "difficulty":         s.difficulty or "Medium",
+                "status":             s.status or "active",
+                "questions_answered": s.questions_answered or 0,
+                "missing_skills":     s.missing_skills or [],
+                "date":               date_str,
+                "ago":                ago,
+                "duration":           duration_str,
+                "score":              round(report.overall_score, 1) if report else None,
+                "tech_score":         round(report.category_scores.get("technical_accuracy", 0), 1) if report and report.category_scores else None,
+                "comm_score":         round(report.category_scores.get("communication", 0), 1) if report and report.category_scores else None,
+                "has_report":         report is not None,
+            })
+        return result
+
+    @staticmethod
+    def get_user_progress(db: Session, user_id: int):
+        """Aggregate history of scores, WPM, and filler counts over time"""
+        sessions = (
+            db.query(SessionModel)
+            .filter(SessionModel.user_id == user_id)
+            .order_by(SessionModel.created_at.asc())
+            .all()
+        )
+
+        progress_data = []
+        for i, s in enumerate(sessions):
+            report = db.query(ReportModel).filter(ReportModel.session_id == s.id).first()
+            if report and report.category_scores:
+                progress_data.append({
+                    "session_number": i + 1,
+                    "date": s.created_at.strftime("%Y-%m-%d") if s.created_at else "",
+                    "overall_score": report.overall_score or 0,
+                    "avg_wpm": report.category_scores.get("avg_wpm", 0),
+                    "total_fillers": report.category_scores.get("total_fillers", 0)
+                })
+
+        return progress_data

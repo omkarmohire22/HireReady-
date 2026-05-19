@@ -10,7 +10,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String, unique=True, index=True, nullable=False)
     name = Column(String, nullable=False)
-    hashed_password = Column(String, nullable=False)
+    hashed_password = Column(String, nullable=True)  # nullable for Google OAuth users
     role = Column(String, nullable=True)
     subscription = Column(String, default="free")
     avatar_url = Column(String, nullable=True)
@@ -58,6 +58,7 @@ class Answer(Base):
     keywords_used = Column(JSON, default=list)
     keywords_missed = Column(JSON, default=list)
     filler_word_count = Column(Integer, default=0)
+    communication_metrics = Column(JSON, default=dict)
     answered_at = Column(DateTime, default=datetime.utcnow)
     
     user = relationship("User", back_populates="answers")
@@ -82,3 +83,22 @@ class Report(Base):
     
     user = relationship("User", back_populates="reports")
     session = relationship("Session", back_populates="reports")
+
+class Question(Base):
+    __tablename__ = "questions"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    role = Column(String, index=True, nullable=False)
+    skill = Column(String, index=True, nullable=False)
+    difficulty = Column(String, index=True, nullable=False)  # Easy, Medium, Hard
+    question_type = Column(String, nullable=False)           # Conceptual, Scenario, Design, Debugging, Behavioural
+    question_text = Column(Text, nullable=False)
+    expected_keywords = Column(JSON, default=list)           # Keywords to look for in the answer
+    source = Column(String, default="generated")             # e.g., "seed", "flan-t5"
+    approved = Column(Integer, default=1)                    # 1 = True, 0 = False
+    
+    # Advanced tracking for AI feedback loop
+    times_used = Column(Integer, default=0)
+    avg_score_received = Column(Float, default=0.0)
+    quality_rating = Column(Float, default=5.0)
+    created_at = Column(DateTime, default=datetime.utcnow)

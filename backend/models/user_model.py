@@ -30,3 +30,4 @@ class UserUpdate(BaseModel):
     name: Optional[str] = None
     role: Optional[str] = None
     avatar_url: Optional[str] = None
+    resume_skills: Optional[List[str]] = None

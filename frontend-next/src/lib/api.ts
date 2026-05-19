@@ -1,4 +1,5 @@
-const BASE_URL = "http://localhost:8000/api";
+// Use /api/backend/* to proxy to FastAPI — avoids collision with NextAuth's /api/auth/* routes
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api/backend";
 
 const getToken = () => {
   if (typeof window !== "undefined") {
@@ -22,7 +23,10 @@ export const api = {
             },
             body: form.toString()
         });
-        if (!res.ok) throw new Error("Login failed");
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || "Login failed. Please check your credentials.");
+        }
         return res.json();
     },
     
@@ -32,7 +36,10 @@ export const api = {
             headers: {"Content-Type": "application/json"},
             body: JSON.stringify(data)
         });
-        if (!res.ok) throw new Error("Registration failed");
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || "Registration failed. Try a different email.");
+        }
         return res.json();
     },
 
@@ -44,6 +51,31 @@ export const api = {
             headers: {"Authorization": `Bearer ${token}`}
         });
         if (!res.ok) throw new Error("Failed to fetch profile");
+        return res.json();
+    },
+
+    updateMe: async (data: {name?: string, role?: string, avatar_url?: string, resume_skills?: string[]}) => {
+        const res = await fetch(`${BASE_URL}/auth/me`, {
+            method: "PUT",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${getToken()}`
+            },
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) throw new Error("Failed to update profile");
+        return res.json();
+    },
+
+    uploadAvatar: async (file: File) => {
+        const form = new FormData();
+        form.append("file", file);
+        const res = await fetch(`${BASE_URL}/user/avatar/upload`, {
+            method: "POST",
+            headers: {"Authorization": `Bearer ${getToken()}`},
+            body: form
+        });
+        if (!res.ok) throw new Error("Failed to upload avatar");
         return res.json();
     },
 
@@ -70,7 +102,10 @@ export const api = {
             },
             body: JSON.stringify(data)
         });
-        if (!res.ok) throw new Error("Failed to start session");
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || "Failed to start interview session.");
+        }
         return res.json();
     },
     
@@ -82,7 +117,7 @@ export const api = {
         return res.json();
     },
 
-    submitAnswer: async (sessionId: string | number, data: {question_id: string, question_text?: string, answer_text: string}) => {
+    submitAnswer: async (sessionId: string | number, data: {question_id: string, question_text: string, answer_text: string, communication_metrics?: any}) => {
         const res = await fetch(`${BASE_URL}/interview/${sessionId}/answer`, {
             method: "POST",
             headers: {
@@ -91,7 +126,10 @@ export const api = {
             },
             body: JSON.stringify({
                 session_id: parseInt(sessionId.toString()),
-                ...data
+                question_id: data.question_id,
+                question_text: data.question_text,
+                answer_text: data.answer_text,
+                communication_metrics: data.communication_metrics
             })
         });
         if (!res.ok) throw new Error("Failed to submit answer");
@@ -107,7 +145,7 @@ export const api = {
         return res.json();
     },
 
-    // Report
+    // Report & Roadmap
     generateReport: async (sessionId: string | number) => {
         const res = await fetch(`${BASE_URL}/report/generate/${sessionId}`, {
             method: "POST",
@@ -125,12 +163,28 @@ export const api = {
         return res.json();
     },
 
+    getRoadmap: async (sessionId: string | number) => {
+        const res = await fetch(`${BASE_URL}/roadmap/${sessionId}`, {
+            headers: {"Authorization": `Bearer ${getToken()}`}
+        });
+        if (!res.ok) throw new Error("Failed to fetch roadmap");
+        return res.json();
+    },
+
     // User / Dashboard
     getDashboardStats: async () => {
         const res = await fetch(`${BASE_URL}/user/dashboard`, {
             headers: {"Authorization": `Bearer ${getToken()}`}
         });
         if (!res.ok) throw new Error("Failed to fetch dashboard stats");
+        return res.json();
+    },
+
+    getUserProgress: async () => {
+        const res = await fetch(`${BASE_URL}/user/progress`, {
+            headers: {"Authorization": `Bearer ${getToken()}`}
+        });
+        if (!res.ok) throw new Error("Failed to fetch user progress stats");
         return res.json();
     },
 
@@ -141,4 +195,32 @@ export const api = {
         if (!res.ok) throw new Error("Failed to fetch recent sessions");
         return res.json();
     },
+
+    getAllSessions: async (skip = 0, limit = 50) => {
+        const res = await fetch(`${BASE_URL}/user/sessions?skip=${skip}&limit=${limit}`, {
+            headers: {"Authorization": `Bearer ${getToken()}`}
+        });
+        if (!res.ok) throw new Error("Failed to fetch session history");
+        return res.json();
+    },
+
+    upgradePlan: async () => {
+        // OLD mock endpoint logic
+        const res = await fetch(`${BASE_URL}/user/upgrade`, {
+            method: "POST",
+            headers: {"Authorization": `Bearer ${getToken()}`}
+        });
+        if (!res.ok) throw new Error("Failed to upgrade plan");
+        return res.json();
+    },
+
+    createCheckoutSession: async () => {
+        // REAL Stripe integration
+        const res = await fetch(`${BASE_URL}/stripe/create-checkout-session`, {
+            method: "POST",
+            headers: {"Authorization": `Bearer ${getToken()}`}
+        });
+        if (!res.ok) throw new Error("Failed to create checkout session");
+        return res.json();
+    }
 };

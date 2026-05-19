@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useInterviewAudio } from '@/hooks/useInterviewAudio';
-import { Timer, Lightbulb, Pause, Play, CheckCheck, StickyNote, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Timer, Lightbulb, Pause, Play, CheckCheck, ChevronRight, ChevronLeft, Download, Save } from 'lucide-react';
 
 import { api } from '@/lib/api';
 import { useInterviewSessionStore } from '@/lib/interviewSessionStore';
@@ -189,12 +189,12 @@ const QuestionProgress = ({ current, total }: { current: number; total: number }
 
 /* ── MAIN COMPONENT ── */
 export default function InterviewPanel({ onEnd }: { onEnd: () => void }) {
-  const { currentSession } = useInterviewSessionStore();
-  const sessionId = currentSession?.id || 1;
+  const { session } = useInterviewSessionStore();
+  const sessionId = session?.id || 1;
 
   const [qIndex, setQIndex] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(5);
-  const [currentQ, setCurrentQ] = useState<{ text: string; hint: string; tag: string; id: string } | null>(null);
+  const [currentQ, setCurrentQ] = useState<{ text: string; hint: string; tag: string; id: string; difficulty: string } | null>(null);
   const [isLoadingQ, setIsLoadingQ] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -210,6 +210,7 @@ export default function InterviewPanel({ onEnd }: { onEnd: () => void }) {
           hint: "Focus on your experience with " + res.skill,
           tag: res.skill,
           id: res.question_id,
+          difficulty: res.difficulty || 'Medium',
         });
         setQIndex(res.question_number - 1);
         if (res.total_questions) setTotalQuestions(res.total_questions);
@@ -225,15 +226,14 @@ export default function InterviewPanel({ onEnd }: { onEnd: () => void }) {
     fetchNextQuestion();
   }, []);
 
-  const { sessionState, isSpeaking, isListening, isEvaluating, currentWPM, rmsLevel, fftData, transcription, isSilent, startSpeaking, hasMicAccess } = useInterviewAudio(currentQ?.text || "");
+  const [paused, setPaused] = useState(false);
+  const { sessionState, isSpeaking, isListening, isEvaluating, currentWPM, rmsLevel, fftData, transcription, isSilent, startSpeaking, stopSession, saveRecording, downloadRecording, voiceAnalysis, isRecordingSaved, hasMicAccess } = useInterviewAudio(currentQ?.text || "", paused);
 
   const [counter, setCounter] = useState(0);
   const [questionTimer, setQuestionTimer] = useState(QUESTION_TIME);
-  const [paused, setPaused] = useState(false);
   const [hintVisible, setHintVisible] = useState(false);
   const [hintUsed, setHintUsed] = useState(false);
-  const [notes, setNotes] = useState('');
-  const [notesOpen, setNotesOpen] = useState(false);
+
   const [pulseScale, setPulseScale] = useState(1);
   const [mockScore, setMockScore] = useState({ tech: 78, comms: 91 });
   const [prevFeedback, setPrevFeedback] = useState<string | null>(null);
@@ -285,6 +285,12 @@ export default function InterviewPanel({ onEnd }: { onEnd: () => void }) {
     }
   }, [isEvaluating]);
 
+  const handleSaveRecording = async () => {
+    if (currentQ) {
+      await saveRecording(String(sessionId), currentQ.id);
+    }
+  };
+
   const activeColor = THEME[sessionState];
 
   const formatTime = (s: number) => {
@@ -301,7 +307,8 @@ export default function InterviewPanel({ onEnd }: { onEnd: () => void }) {
       const scoreData = await api.submitAnswer(sessionId, {
         question_id: currentQ.id,
         question_text: currentQ.text,
-        answer_text: transcription || "No verbal response detected."
+        answer_text: transcription || "No verbal response detected.",
+        communication_metrics: voiceAnalysis
       });
       
       setMockScore({ tech: Math.round(scoreData.score * 10), comms: 85 + Math.floor(Math.random() * 10) });
@@ -390,21 +397,42 @@ export default function InterviewPanel({ onEnd }: { onEnd: () => void }) {
           </button>
 
           {/* End session */}
-          <button className="btn-ghost py-1.5 px-3 text-xs font-bold" onClick={onEnd}>End</button>
+          <button className="btn-ghost py-1.5 px-3 text-xs font-bold" onClick={() => { stopSession(); onEnd(); }}>End</button>
         </div>
       </div>
 
-      {/* Role + Tag */}
-      <div className="flex items-center gap-3 mb-6 mt-1">
-        <div className="font-['Syne'] font-extrabold text-2xl tracking-tight">{currentSession?.role || 'Interview Session'}</div>
+      {/* Role + Skill Tag + Difficulty Badge */}
+      <div className="flex items-center gap-3 mb-6 mt-1 flex-wrap">
+        <div className="font-['Syne'] font-extrabold text-2xl tracking-tight">{session?.role || 'Interview Session'}</div>
         {currentQ && (
-          <span style={{
-            fontSize: 11, fontWeight: 700, background: 'rgba(99,102,241,0.15)',
-            color: '#818CF8', border: '1px solid rgba(99,102,241,0.3)',
-            borderRadius: 6, padding: '3px 10px', letterSpacing: 0.5,
-          }}>
-            {currentQ.tag}
-          </span>
+          <>
+            {/* Skill tag */}
+            <span style={{
+              fontSize: 11, fontWeight: 700, background: 'rgba(99,102,241,0.15)',
+              color: '#818CF8', border: '1px solid rgba(99,102,241,0.3)',
+              borderRadius: 6, padding: '3px 10px', letterSpacing: 0.5,
+            }}>
+              {currentQ.tag}
+            </span>
+            {/* Difficulty badge */}
+            {(() => {
+              const diffColors: Record<string, { bg: string; color: string; border: string }> = {
+                Easy:   { bg: 'rgba(0,217,126,0.12)',   color: '#00D97E', border: 'rgba(0,217,126,0.3)' },
+                Medium: { bg: 'rgba(245,158,11,0.12)',  color: '#F59E0B', border: 'rgba(245,158,11,0.3)' },
+                Hard:   { bg: 'rgba(239,68,68,0.12)',   color: '#EF4444', border: 'rgba(239,68,68,0.3)' },
+              };
+              const c = diffColors[currentQ.difficulty] ?? diffColors.Medium;
+              return (
+                <span style={{
+                  fontSize: 11, fontWeight: 700,
+                  background: c.bg, color: c.color, border: `1px solid ${c.border}`,
+                  borderRadius: 6, padding: '3px 10px', letterSpacing: 0.5,
+                }}>
+                  {currentQ.difficulty}
+                </span>
+              );
+            })()}
+          </>
         )}
       </div>
 
@@ -444,29 +472,6 @@ export default function InterviewPanel({ onEnd }: { onEnd: () => void }) {
               </div>
             </div>
 
-            {/* Hint row */}
-            <div className="mt-5 flex items-center gap-3 border-t border-[var(--border)] pt-4">
-              {!hintVisible ? (
-                <button
-                  onClick={handleShowHint}
-                  disabled={hintUsed}
-                  className="flex items-center gap-2 text-[12px] font-semibold text-[#F59E0B] hover:text-[#fbbf24] transition-colors disabled:opacity-40"
-                >
-                  <Lightbulb size={14} />
-                  {hintUsed ? 'Hint used' : '💡 Get Hint'}
-                </button>
-              ) : (
-                <motion.div initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
-                  className="flex items-start gap-2 text-[13px] text-[#F59E0B] font-medium leading-relaxed"
-                >
-                  <Lightbulb size={14} className="mt-0.5 shrink-0" />
-                  <span>{currentQ.hint}</span>
-                </motion.div>
-              )}
-              <div className="ml-auto text-[11px] text-[var(--text-subtle)]">
-                Hint {hintUsed ? '(used)' : 'available'}
-              </div>
-            </div>
           </div>
 
           {/* User Answer Card */}
@@ -524,22 +529,53 @@ export default function InterviewPanel({ onEnd }: { onEnd: () => void }) {
                   </motion.div>
                 )}
 
-                {/* Done answering button */}
-                {isListening && words.length > 0 && (
-                  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-5 flex justify-end">
+                {/* Recording action buttons */}
+                {(isListening || isEvaluating) && (
+                  <div className="flex items-center gap-2 mt-4 flex-wrap">
                     <button
-                      onClick={handleNextQuestion}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-[13px] text-white transition-all"
+                      onClick={downloadRecording}
+                      className="flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--elevated)] text-[var(--text-muted)] hover:text-white hover:border-white/20 transition-all"
+                    >
+                      <Download size={12} /> Download Recording
+                    </button>
+                    <button
+                      onClick={handleSaveRecording}
+                      disabled={isRecordingSaved}
+                      className="flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-lg border transition-all"
                       style={{
-                        background: 'linear-gradient(135deg, #6366F1, #06B6D4)',
-                        boxShadow: '0 0 20px rgba(99,102,241,0.35)',
+                        borderColor: isRecordingSaved ? '#00D97E66' : 'var(--border)',
+                        background: isRecordingSaved ? 'rgba(0,217,126,0.1)' : 'var(--elevated)',
+                        color: isRecordingSaved ? '#00D97E' : 'var(--text-muted)',
                       }}
                     >
-                      <CheckCheck size={15} />
-                      {isSubmitting ? 'Submitting...' : (qIndex < totalQuestions - 1 ? 'Done — Next Question' : 'Done — Finish Interview')}
+                      <Save size={12} /> {isRecordingSaved ? 'Saved to Profile!' : 'Save to Profile'}
                     </button>
-                  </motion.div>
+                  </div>
                 )}
+
+                {/* Done / Next Question — always visible once listening or evaluating */}
+                <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="mt-5 flex items-center justify-between gap-3">
+                  {/* Skip without answering */}
+                  <button
+                    onClick={() => handleNextQuestion()}
+                    disabled={isSubmitting}
+                    className="text-[12px] font-semibold text-[var(--text-subtle)] hover:text-white transition-colors disabled:opacity-40"
+                  >
+                    {isListening ? 'Skip (no answer)' : ''}
+                  </button>
+                  <button
+                    onClick={handleNextQuestion}
+                    disabled={isSubmitting}
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-[13px] text-white transition-all disabled:opacity-50"
+                    style={{
+                      background: 'linear-gradient(135deg, #6366F1, #06B6D4)',
+                      boxShadow: '0 0 20px rgba(99,102,241,0.35)',
+                    }}
+                  >
+                    <CheckCheck size={15} />
+                    {isSubmitting ? 'Submitting…' : isEvaluating ? 'Next Question →' : (qIndex < totalQuestions - 1 ? 'Done — Next Question →' : 'Done — Finish Interview ✓')}
+                  </button>
+                </motion.div>
               </motion.div>
             )}
           </AnimatePresence>
@@ -600,47 +636,7 @@ export default function InterviewPanel({ onEnd }: { onEnd: () => void }) {
             </AnimatePresence>
           </div>
 
-          {/* Notes Panel */}
-          <div className="card overflow-hidden transition-all duration-300" style={{ border: '1px solid var(--border)' }}>
-            <button
-              onClick={() => setNotesOpen(o => !o)}
-              className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-white/5 transition-colors"
-            >
-              <div className="flex items-center gap-2 text-[13px] font-semibold text-[var(--text-muted)]">
-                <StickyNote size={14} />
-                My Notes
-                {notes.length > 0 && (
-                  <span className="text-[10px] bg-[#6366F1]/20 text-[#818CF8] border border-[#6366F1]/30 rounded-full px-2 py-0.5 font-bold">
-                    {notes.split('\n').filter(Boolean).length} lines
-                  </span>
-                )}
-              </div>
-              <ChevronRight size={14} className={`text-[var(--text-subtle)] transition-transform duration-200 ${notesOpen ? 'rotate-90' : ''}`} />
-            </button>
-            <AnimatePresence>
-              {notesOpen && (
-                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }}>
-                  <div className="px-4 pb-4">
-                    <textarea
-                      value={notes}
-                      onChange={e => setNotes(e.target.value)}
-                      placeholder="Jot key points, keywords, structures…"
-                      rows={6}
-                      style={{
-                        width: '100%', background: 'var(--elevated)', border: '1px solid var(--border)',
-                        borderRadius: 10, padding: '10px 12px', fontSize: 13, color: 'var(--text)',
-                        resize: 'vertical', outline: 'none', fontFamily: 'DM Sans, sans-serif',
-                        lineHeight: 1.6, boxSizing: 'border-box',
-                      }}
-                    />
-                    <div className="text-[11px] text-[var(--text-subtle)] mt-1.5 text-right">
-                      Notes are private and cleared after session
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+
 
         </div>
       </div>

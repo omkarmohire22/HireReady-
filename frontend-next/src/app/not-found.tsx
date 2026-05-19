@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { Home, ArrowLeft, Search } from 'lucide-react';
 
 const C = {
-  primary: '#6C47FF',
-  accent: '#00E5FF',
-  grad: 'linear-gradient(135deg, #6C47FF, #00E5FF)',
+  primary: 'var(--teal)',
+  accent:  'var(--purple)',
+  grad:    'var(--grad)',
 };
 
 const GLITCH_CHARS = '!<>-_\\/[]{}—=+*^?#________';
@@ -115,11 +115,11 @@ export default function NotFound() {
         {/* Glitch subtitle */}
         <div
           style={{
-            fontFamily: 'DM Sans, monospace',
+            fontFamily: 'var(--font-sans)',
             fontSize: 13,
             letterSpacing: 4,
             textTransform: 'uppercase',
-            color: C.primary,
+            color: 'var(--teal)',
             marginBottom: 28,
             fontWeight: 600,
           }}
@@ -156,11 +156,11 @@ export default function NotFound() {
 
           <h1
             style={{
-              fontFamily: 'Syne, sans-serif',
+              fontFamily: 'var(--font-display)',
               fontWeight: 700,
               fontSize: 22,
               marginBottom: 12,
-              letterSpacing: '-0.5px',
+              letterSpacing: '-0.03em',
             }}
           >
             Oops! Wrong turn.

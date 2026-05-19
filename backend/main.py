@@ -1,6 +1,14 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+import os
+
+# Automatically inject Conda's Library/bin path to environment PATH to ensure ffmpeg is found on Windows
+conda_library_bin = r"C:\Users\omkar\miniconda3\Library\bin"
+if os.path.exists(conda_library_bin) and conda_library_bin not in os.environ.get("PATH", ""):
+    os.environ["PATH"] += os.pathsep + conda_library_bin
+
+from fastapi.staticfiles import StaticFiles
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -19,8 +27,12 @@ app.add_middleware(
 )
 
 # Import and include routers
-from routers import resume, auth, interview, report, user, questions
+from routers import resume, auth, interview, report, user, questions, voice, roadmap, stripe_router
 from database.connection import init_db
+
+# Mount static files for audio playback
+os.makedirs("uploads", exist_ok=True)
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Initialize tables on startup
 @app.on_event("startup")
@@ -33,6 +45,9 @@ app.include_router(interview.router)
 app.include_router(report.router)
 app.include_router(user.router)
 app.include_router(questions.router)
+app.include_router(voice.router, prefix="/api/voice", tags=["Voice"])
+app.include_router(roadmap.router)
+app.include_router(stripe_router.router)
 # Basic Health Check Endpoint
 @app.get("/health")
 def health_check():
