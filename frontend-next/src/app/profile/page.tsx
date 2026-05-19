@@ -27,10 +27,10 @@ const CircleProgress = ({ value, size = 100, strokeWidth = 7, color = C.primary 
   return (
     <div style={{ position: 'relative', width: size, height: size, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
       <svg width={size} height={size} style={{ position: 'absolute', top: 0, left: 0, transform: 'rotate(-90deg)' }}>
-        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={strokeWidth} />
+        <circle cx={size/2} cy={size/2} r={r} fill="none" stroke="var(--border)" strokeWidth={strokeWidth} />
         <circle cx={size/2} cy={size/2} r={r} fill="none" stroke={color} strokeWidth={strokeWidth}
           strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
-          style={{ transition: 'stroke-dashoffset 1.2s ease', filter: `drop-shadow(0 0 6px ${color}66)` }} />
+          style={{ transition: 'stroke-dashoffset 1.2s ease', filter: `drop-shadow(0 0 6px ${color}44)` }} />
       </svg>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: size * 0.22, color: 'var(--text-high)' }}>{value}%</div>
@@ -269,7 +269,21 @@ export default function ProfilePage() {
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
               <h2 style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 22, letterSpacing: '-0.03em' }}>{user?.name || 'Developer'}</h2>
-              <span style={{ background: user?.subscription === 'pro' ? 'linear-gradient(135deg, rgba(108,71,255,0.18), rgba(0,229,255,0.1))' : 'var(--teal-dim)', color: user?.subscription === 'pro' ? 'var(--accent)' : 'var(--teal)', border: `1px solid ${user?.subscription === 'pro' ? 'rgba(0,229,255,0.25)' : 'rgba(29,158,117,0.25)'}`, borderRadius: 6, padding: '2px 9px', fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              <span style={{ 
+                background: user?.subscription === 'pro' 
+                  ? 'linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(108, 71, 255, 0.1) 100%)' 
+                  : 'var(--teal-dim)', 
+                color: user?.subscription === 'pro' 
+                  ? '#C5A059' 
+                  : 'var(--teal)', 
+                border: `1px solid ${user?.subscription === 'pro' ? 'rgba(255, 215, 0, 0.35)' : 'var(--border)'}`, 
+                borderRadius: 6, 
+                padding: '2px 9px', 
+                fontSize: 11, 
+                fontWeight: 700, 
+                letterSpacing: '0.04em', 
+                textTransform: 'uppercase' 
+              }}>
                 {user?.subscription === 'pro' ? '⭐ Pro Member' : 'Free Tier'}
               </span>
             </div>
@@ -332,8 +346,8 @@ export default function ProfilePage() {
             <motion.div
               key={a.label}
               style={{
-                background: a.unlocked ? 'rgba(255,181,71,0.06)' : 'var(--elevated)',
-                border: `1px solid ${a.unlocked ? 'rgba(255,181,71,0.22)' : 'var(--border)'}`,
+                background: a.unlocked ? 'rgba(245, 158, 11, 0.08)' : 'var(--elevated)',
+                border: `1px solid ${a.unlocked ? 'rgba(245, 158, 11, 0.25)' : 'var(--border)'}`,
                 borderRadius: 12, padding: '16px 12px', textAlign: 'center',
                 opacity: a.unlocked ? 1 : 0.45,
                 display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
