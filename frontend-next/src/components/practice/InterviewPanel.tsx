@@ -304,6 +304,9 @@ export default function InterviewPanel({ onEnd }: { onEnd: () => void }) {
     if (!currentQ || isSubmitting) return;
     setIsSubmitting(true);
     try {
+      // Stop all background microphone and speech recognition streams immediately to prevent audio overlap/leak
+      stopSession();
+
       const scoreData = await api.submitAnswer(sessionId, {
         question_id: currentQ.id,
         question_text: currentQ.text,
