@@ -78,14 +78,26 @@ async def analyze_voice(
         with open(temp_filepath, "wb") as buffer:
             shutil.copyfileobj(audio_file.file, buffer)
 
-        if not transcript:
+        # Clean and sanitize incoming browser transcript
+        browser_transcript = (transcript or "").strip()
+        if browser_transcript.lower() in {"undefined", "null", "none", "no response"}:
+            browser_transcript = ""
+
+        # Trigger high-accuracy Whisper STT if browser transcript is missing or extremely short
+        if not browser_transcript or len(browser_transcript) < 12:
             try:
                 transcribe_audio = get_stt()
                 stt_result = transcribe_audio(temp_filepath)
-                transcript = stt_result.get("transcript", "")
+                whisper_text = stt_result.get("transcript", "").strip()
+                if whisper_text:
+                    transcript = whisper_text
+                else:
+                    transcript = browser_transcript
             except Exception as e:
                 print(f"Whisper STT failed: {e}")
-                transcript = ""
+                transcript = browser_transcript
+        else:
+            transcript = browser_transcript
 
         analyze_communication = get_analyzer()
         analysis_result = analyze_communication(temp_filepath, transcript)
