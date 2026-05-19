@@ -233,6 +233,104 @@ QUESTION_BANK = {
         "What is CI/CD and why is it important?",
         "What happens in a typical CI pipeline when a pull request is opened?",
     ],
+
+    # ── Next.js Questions ───────────────────
+    ("Frontend Developer", "Next.js", "Hard"): [
+        "Explain how incremental static regeneration (ISR) works in Next.js. How do you handle stale cache bypass for critical pages?",
+        "Compare Next.js App Router nested layouts with Page Router layouts. How do you optimize dynamic routing performance?",
+        "Walk me through your optimization strategy for minimizing Largest Contentful Paint (LCP) in a Next.js Server Components environment."
+    ],
+    ("Frontend Developer", "Next.js", "Medium"): [
+        "What is the difference between getServerSideProps, getStaticProps, and dynamic rendering in Next.js Server Components?",
+        "How do you implement secure middleware-based route guarding in Next.js using JWTs?",
+    ],
+    ("Frontend Developer", "Next.js", "Easy"): [
+        "What are Next.js API Routes and when would you use them?",
+        "Explain the purpose of the Custom Image Component in Next.js and how it optimizes layouts."
+    ],
+
+    # ── AWS Cloud Questions ───────────────────
+    ("DevOps Engineer", "AWS", "Hard"): [
+        "Design a highly available, multi-region architecture on AWS with active-active database replication and failover latency under 10 seconds.",
+        "How would you troubleshoot a random 554 Gateway Timeout error occurring on your AWS ALB linked to ECS Fargate containers?",
+    ],
+    ("DevOps Engineer", "AWS", "Medium"): [
+        "Compare AWS Lambda with ECS Fargate in terms of cold starts, scaling limits, and cost profiles.",
+        "How do you implement dynamic secret rotation for an RDS Database using AWS Secrets Manager and Lambda?",
+    ],
+    ("DevOps Engineer", "AWS", "Easy"): [
+        "What is the difference between an AWS S3 bucket policy and an IAM policy?",
+        "Explain the purpose of an AWS VPC and Security Groups."
+    ],
+
+    # ── Terraform Questions ───────────────────
+    ("DevOps Engineer", "Terraform", "Hard"): [
+        "How do you resolve a state file drift or lock conflict systematically when multiple pipeline runs attempt simultaneous updates?",
+        "Explain how custom Terraform Providers are built and how they communicate with target APIs."
+    ],
+    ("DevOps Engineer", "Terraform", "Medium"): [
+        "Explain the concept of Terraform Modules and how you design re-usable modules with complex variable inputs.",
+        "What is a Terraform State file and how do you configure remote state locking with S3 and DynamoDB?"
+    ],
+    ("DevOps Engineer", "Terraform", "Easy"): [
+        "What is the difference between terraform plan and terraform apply?",
+        "How do you declare and reference local variables in Terraform?"
+    ],
+
+    # ── PostgreSQL Questions ───────────────────
+    ("Backend Developer", "PostgreSQL", "Hard"): [
+        "Explain connection pooling in PostgreSQL. Compare PgBouncer session mode vs transaction mode under high concurrency.",
+        "Your PostgreSQL database has high CPU utilization caused by autovacuum blocking queries. How do you tune vacuum parameters?",
+        "Design a database schema utilizing PostgreSQL partitioning for a table that grows by 10 million rows daily."
+    ],
+    ("Backend Developer", "PostgreSQL", "Medium"): [
+        "What is the difference between a B-Tree index, a GIN index, and a BRIN index in PostgreSQL? When is each preferred?",
+        "How do you identify slow-running SQL queries in PostgreSQL? What metrics do you examine in EXPLAIN ANALYZE?"
+    ],
+    ("Backend Developer", "PostgreSQL", "Easy"): [
+        "Explain the difference between INNER JOIN, LEFT JOIN, and outer joins in SQL.",
+        "What is database normalization and what are the benefits of 3NF?"
+    ],
+
+    # ── Redis Questions ───────────────────
+    ("Backend Developer", "Redis", "Hard"): [
+        "Design a distributed rate limiter in Redis that supports sliding-window logging with millisecond precision under high traffic.",
+        "Compare Redis Sentinel with Redis Cluster. How is data partitioned and how is failover managed?",
+    ],
+    ("Backend Developer", "Redis", "Medium"): [
+        "Explain Redis persistence models: RDB snapshots vs AOF logs. When would you combine both?",
+        "How do you handle Redis cache penetration, stampede, and cache avalanche systematically?"
+    ],
+    ("Backend Developer", "Redis", "Easy"): [
+        "What is the difference between Redis data types: Strings, Hashes, Lists, and Sets?",
+        "Explain Redis keying eviction policies and the purpose of TTL."
+    ],
+
+    # ── Data Analyst Questions ───────────────────
+    ("Data Analyst", "SQL", "Hard"): [
+        "Write a SQL window query to calculate a 7-day rolling average of user transaction volumes without using external joins.",
+        "Explain the difference between correlated subqueries and CTEs. How do query planners optimize recursive CTEs?"
+    ],
+    ("Data Analyst", "SQL", "Medium"): [
+        "How do you use SQL window functions like ROW_NUMBER(), RANK(), and DENSE_RANK()? When would they yield different results?",
+        "What is database indexing and how does it speed up queries at the cost of write performance?"
+    ],
+    ("Data Analyst", "SQL", "Easy"): [
+        "What is the GROUP BY clause and how does it differ from the WHERE clause in SQL?",
+        "Explain the purpose of the HAVING clause with a simple example."
+    ],
+    ("Data Analyst", "Pandas", "Hard"): [
+        "Explain how vectorization works in Pandas and why custom apply functions are orders of magnitude slower than native operations.",
+        "You need to merge two massive dataframes of 50M rows each under strict RAM limits. What memory optimization strategies would you use?"
+    ],
+    ("Data Analyst", "Pandas", "Medium"): [
+        "Explain the difference between groupby().transform() and groupby().apply() in Pandas.",
+        "How do you systematically handle missing or null values in a Pandas DataFrame without losing dataset variance?"
+    ],
+    ("Data Analyst", "Pandas", "Easy"): [
+        "What is the difference between a Series and a DataFrame in Pandas?",
+        "How do you select specific columns and rows from a Pandas DataFrame?"
+    ],
 }
 
 
