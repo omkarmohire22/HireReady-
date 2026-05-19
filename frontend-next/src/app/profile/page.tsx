@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { CheckCircle, Zap, Award, Mic, Star, Loader2, Edit3, X, AlertCircle, Compass, Play, BookOpen, Settings } from 'lucide-react';
+import { CheckCircle, Zap, Award, Mic, Star, Loader2, Edit3, X, AlertCircle, Compass, Play, BookOpen, Settings, Map, ClipboardList } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
@@ -407,24 +407,25 @@ export default function ProfilePage() {
       {/* Quick Links */}
       <div className="card fade-up-4" style={{ padding: 24, marginBottom: 20 }}>
         <h3 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.8, color: 'var(--text-muted)', marginBottom: 16 }}>Navigation Center</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 10 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 12 }}>
           {[
-            { l: 'Practice Arena', to: '/practice', c: C.accent, icon: Play },
-            { l: 'Roadmap Page',  to: '/roadmap/demo123',  c: '#A78BFA', icon: BookOpen },
-            { l: 'Reports List',  to: '/report',   c: C.success, icon: Award },
-            { l: 'Settings Hub',  to: '/settings', c: C.warning, icon: Settings },
+            { l: 'Practice Arena', to: '/practice', c: '#8B5CF6', icon: Play },
+            { l: 'Roadmap Page',  to: '/roadmap/demo123',  c: '#3B82F6', icon: Map },
+            { l: 'Reports List',  to: '/report',   c: '#10B981', icon: ClipboardList },
+            { l: 'Settings Hub',  to: '/settings', c: '#F59E0B', icon: Settings },
           ].map(link => (
             <MotionLink key={link.l} href={link.to} style={{
               display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              padding: '16px 10px', borderRadius: 12, fontSize: 13, fontWeight: 600,
+              padding: '24px 16px', borderRadius: 12, fontSize: 14, fontWeight: 500,
+              fontFamily: "'Lora', 'Georgia', 'Times New Roman', serif",
               background: 'var(--elevated)', border: '1px solid var(--border)',
-              color: link.c, textDecoration: 'none', transition: 'all 0.15s',
-              gap: 8
+              color: link.c, textDecoration: 'none', transition: 'all 0.2s ease',
+              gap: 12
             }}
-              whileHover={hoverLift}
+              whileHover={{ y: -4, scale: 1.02, boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)' }}
               whileTap={tapDown}
               transition={{ type: 'spring', stiffness: 260, damping: 18 }}>
-              <link.icon size={16} />
+              <link.icon size={20} color={link.c} />
               {link.l}
             </MotionLink>
           ))}
