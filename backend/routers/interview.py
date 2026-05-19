@@ -183,14 +183,54 @@ async def get_next_question(
     difficulty = session.difficulty or "Medium"
     stype = session.session_type or "technical"
 
+    # ── Intelligent Dynamic Follow-Up Question System ──
+    from database.models import Answer as AnswerModel
+    last_answer = db.query(AnswerModel).filter(AnswerModel.session_id == session.id).order_by(AnswerModel.id.desc()).first()
+    
+    if last_answer and "followup" not in last_answer.question_id and last_answer.answer_text:
+        ans_text_lower = last_answer.answer_text.lower()
+        triggered_q = None
+        triggered_skill = None
+        
+        FOLLOWUP_TRIGGERS = {
+            "state": ("React", "You mentioned 'state'. What is the fundamental difference between useState and useReducer in React, and when would you prefer useReducer?"),
+            "effect": ("React", "You touched on 'effects'. How do you handle cleanup in useEffect to prevent memory leaks in production?"),
+            "context": ("React", "You mentioned 'context'. How do you prevent unnecessary child re-renders when Context values change?"),
+            "decorator": ("Python", "You mentioned 'decorators'. Can you explain how a decorator function operates under the hood in Python?"),
+            "generator": ("Python", "You mentioned 'generators'. What is the difference between 'yield' and 'return' in a Python generator?"),
+            "container": ("Docker", "You mentioned 'containers'. Technically speaking, what is the core architectural difference between a Docker container and a Virtual Machine?"),
+            "volume": ("Docker", "You mentioned 'volumes'. How does Docker handle data persistence outside of a container's filesystem lifecycle?"),
+            "ec2": ("AWS", "You mentioned 'EC2'. How would you decide whether to allocate On-Demand, Reserved, or Spot EC2 instances for an application?"),
+            "lambda": ("AWS", "You mentioned serverless or 'Lambda'. How do you diagnose and mitigate cold start latency in serverless architectures?"),
+            "pod": ("Kubernetes", "You mentioned 'pods'. How does Kubernetes manage container scheduling and shared network namespaces inside a Pod?"),
+            "service": ("Kubernetes", "You mentioned 'services'. What is the technical routing difference between ClusterIP, NodePort, and LoadBalancer service types?"),
+            "index": ("SQL", "You mentioned 'indexing'. How does a B-Tree database index accelerate reads, and what is its overhead on write transactions?"),
+            "join": ("SQL", "You mentioned 'joins'. Can you explain the execution difference between a Hash Join, a Merge Join, and a Nested Loop Join?")
+        }
+        
+        for key, (skill, q_text) in FOLLOWUP_TRIGGERS.items():
+            if f" {key}" in f" {ans_text_lower}":
+                triggered_q = q_text
+                triggered_skill = skill
+                break
+                
+        if triggered_q:
+            return {
+                "question_id":      f"{last_answer.question_id}_followup",
+                "skill":            triggered_skill,
+                "question_text":    triggered_q,
+                "difficulty":       difficulty,
+                "total_questions":  len(missing_skills),
+                "question_number":  questions_answered,
+                "done":             False,
+            }
+
     if not missing_skills or questions_answered >= len(missing_skills):
         return {"message": "All questions answered. Ready to end session.", "done": True}
 
     skill_to_test = missing_skills[questions_answered]
 
     # ── Anti-repetition: fetch all already-asked question texts for this session
-    # CRITICAL: use session.id (int), NOT session_id (str from URL path)
-    from database.models import Answer as AnswerModel
     asked_rows = db.query(AnswerModel.question_text).filter(
         AnswerModel.session_id == session.id
     ).all()
