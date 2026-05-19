@@ -315,6 +315,18 @@ async def submit_answer(
     current_avg_score = q_record.avg_score_received or 0.0
     q_record.avg_score_received = ((current_avg_score * (q_record.times_used - 1)) + float(score_result["score"])) / q_record.times_used
     
+    # ── Adaptive Difficulty Adjustment ──
+    all_prev_answers = db.query(AnswerModel).filter(AnswerModel.session_id == session.id).all()
+    all_scores = [float(ans.score) for ans in all_prev_answers] + [float(score_result["score"])]
+    if all_scores:
+        running_avg = sum(all_scores) / len(all_scores)
+        if running_avg >= 7.5:
+            session.difficulty = "Hard"
+        elif running_avg < 4.5:
+            session.difficulty = "Easy"
+        else:
+            session.difficulty = "Medium"
+
     # Increment the answered-questions counter on the session
     session.questions_answered = (session.questions_answered or 0) + 1
     
