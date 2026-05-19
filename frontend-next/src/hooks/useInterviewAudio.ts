@@ -170,8 +170,11 @@ export function useInterviewAudio(questionText: string, paused: boolean = false)
 
       const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
       const tCtx = new AudioContextCtor();
+      if (tCtx.state === 'suspended') {
+        await tCtx.resume();
+      }
       audioCtxRef.current = tCtx;
-
+      
       const source = tCtx.createMediaStreamSource(stream);
       const analyser = tCtx.createAnalyser();
       analyser.fftSize = 128;
@@ -232,8 +235,8 @@ export function useInterviewAudio(questionText: string, paused: boolean = false)
         
         recognition.onerror = (e: any) => console.warn('Speech recognition error', e);
         try {
-          recognition.start();
           recognitionRef.current = recognition;
+          recognition.start();
         } catch (e) {
           console.warn('Speech recognition failed to start', e);
         }
