@@ -520,7 +520,25 @@ export default function InterviewPanel({ onEnd }: { onEnd: () => void }) {
                 </div>
 
                 <div className="w-full relative transition-all duration-500" style={{ filter: isEvaluating ? 'blur(2px)' : 'none', opacity: isEvaluating ? 0.4 : 1 }}>
-                  <AdvancedWaveform fftData={fftData} isListening={isListening} rmsLevel={rmsLevel} isSilent={isSilent} />
+                  {/* Dynamic neon voice-amplitude ambient halo */}
+                  {isListening && (
+                    <motion.div 
+                      className="absolute inset-0 rounded-2xl pointer-events-none"
+                      style={{
+                        zIndex: 0,
+                        background: 'radial-gradient(circle at center, rgba(6, 182, 212, 0.2) 0%, transparent 80%)',
+                        filter: 'blur(20px)',
+                      }}
+                      animate={{ 
+                        scale: 1.0 + (rmsLevel / 100) * 0.5, 
+                        opacity: 0.25 + (rmsLevel / 100) * 0.75 
+                      }}
+                      transition={{ type: 'spring', stiffness: 250, damping: 15 }}
+                    />
+                  )}
+                  <div className="relative z-10 w-full">
+                    <AdvancedWaveform fftData={fftData} isListening={isListening} rmsLevel={rmsLevel} isSilent={isSilent} />
+                  </div>
                 </div>
 
                 {isEvaluating && (

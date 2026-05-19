@@ -263,24 +263,39 @@ export default function DashboardPage() {
 
         {/* Upgrade card */}
         <div className="fade-up-5">
-          <div className="upgrade-card">
-            <div className="upgrade-card-inner">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 10 }}>
-                <div style={{ width: 30, height: 30, borderRadius: 8, background: C.grad, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Zap size={13} color="#fff" fill="#fff" />
-                </div>
-                <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 14.5, letterSpacing: '-0.02em' }}>Upgrade to Pro</span>
+          <motion.div 
+            className="upgrade-card card-glass"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.08) 0%, rgba(108, 71, 255, 0.08) 100%)',
+              border: '1px solid rgba(255, 215, 0, 0.25)',
+              boxShadow: '0 8px 32px rgba(255, 215, 0, 0.04)',
+              borderRadius: '12px',
+              padding: '24px',
+              position: 'relative' as const,
+              overflow: 'hidden' as const
+            }}
+            whileHover={{ 
+              y: -4, 
+              boxShadow: '0 12px 40px rgba(255, 215, 0, 0.1), 0 0 30px rgba(108, 71, 255, 0.15)',
+              borderColor: 'rgba(255, 215, 0, 0.45)'
+            }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: 'linear-gradient(135deg, #FFD700, #FFA500)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 0 15px rgba(255, 215, 0, 0.3)' }}>
+                <Zap size={14} color="#000" fill="#000" />
               </div>
-              <p style={{ fontSize: 12.5, color: 'var(--text-muted)', marginBottom: 16, lineHeight: 1.6 }}>
-                Unlock unlimited real-time AI feedback and advanced analytics.
-              </p>
-              <Link href="/upgrade" style={{ textDecoration: 'none', display: 'block' }}>
-                <button className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '9px', fontSize: 13.5 }}>
-                  Upgrade Now
-                </button>
-              </Link>
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 700, fontSize: 15, letterSpacing: '-0.02em', color: '#FFD700' }}>Upgrade to Pro</span>
             </div>
-          </div>
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 18, lineHeight: 1.6 }}>
+              Unlock unlimited AI interview sessions, real-time voice reports, and advanced career path analytics.
+            </p>
+            <Link href="/upgrade" style={{ textDecoration: 'none', display: 'block' }}>
+              <button className="btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '10px', fontSize: 13.5, background: 'linear-gradient(135deg, #FFD700, #FFA500)', color: '#000', fontWeight: 'bold', boxShadow: '0 4px 15px rgba(255, 215, 0, 0.2)' }}>
+                Unlock Premium Now
+              </button>
+            </Link>
+          </motion.div>
         </div>
       </div>
     </div>

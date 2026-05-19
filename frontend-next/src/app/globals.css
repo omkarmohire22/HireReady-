@@ -71,50 +71,50 @@
 }
 
 /* ═══════════════════════════════════════════
-   LIGHT THEME — Enterprise clean
+   LIGHT THEME — Frosted Milk & Warm Slate
 ═══════════════════════════════════════════ */
 [data-theme="light"] {
-  --bg:          #F4F6F9;
-  --surface:     #FFFFFF;
-  --elevated:    #EEF1F6;
-  --overlay:     #E6EAF2;
+  --bg:          #F8F9FC;   /* Soft Milk Silk Background */
+  --surface:     #FFFFFF;   /* Pure Opal White Surface */
+  --elevated:    #F1F3F9;   /* Warm Satin Focus */
+  --overlay:     #EBF0F7;
 
-  --text:        #0F172A;
+  --text:        #0F172A;   /* Rich Ink Obsidian Text */
   --text-hi:     #0F172A;
   --text-med:    #334155;
   --text-muted:  #475569;
   --text-subtle: #94A3B8;
   --text-faint:  #CBD5E1;
 
-  --border:       #E2E8F0;
-  --border-med:   #CBD5E1;
-  --border-strong:#B8C4D0;
+  --border:       rgba(15, 23, 42, 0.06);   /* Ultra-thin slate dividers */
+  --border-med:   rgba(15, 23, 42, 0.10);
+  --border-strong:rgba(15, 23, 42, 0.16);
 
-  --nav-bg:       rgba(255,255,255,0.92);
+  --nav-bg:       rgba(248, 249, 252, 0.90);
 
   --card-bg:      #FFFFFF;
-  --input-bg:     #EEF1F6;
-  --input-border: #E2E8F0;
+  --input-bg:     #F1F3F9;
+  --input-border: rgba(15, 23, 42, 0.08);
 
-  --teal:        #0F6E56;
-  --teal-dim:    rgba(15,110,86,0.08);
-  --purple:      #4F46E5;
-  --purple-dim:  rgba(79,70,229,0.08);
+  --teal:        #0D9488;   /* Forest Emerald Teal */
+  --teal-dim:    rgba(13, 148, 136, 0.08);
+  --purple:      #4F46E5;   /* Electric Cobalt Indigo */
+  --purple-dim:  rgba(79, 70, 229, 0.08);
   --indigo:      #4F46E5;
-  --success:     #0F6E56;
+  --success:     #0D9488;
 
-  --bg-main:        #F4F6F9;
+  --bg-main:        #F8F9FC;
   --text-high:      #0F172A;
   --text-med-alt:   #475569;
   --text-low:       #94A3B8;
   --text-primary:   #0F172A;
   --text-secondary: #475569;
-  --bg-interactive: rgba(79,70,229,0.06);
-  --border-soft:    #E2E8F0;
+  --bg-interactive: rgba(79, 70, 229, 0.06);
+  --border-soft:    rgba(15, 23, 42, 0.06);
   --border-focus:   #4F46E5;
   --theme-accent:   #4F46E5;
 
-  --grad:           linear-gradient(135deg, #4F46E5, #0F6E56);
+  --grad:           linear-gradient(135deg, #4F46E5, #0D9488);
 }
 
 /* ═══════════════════════════════════════════
@@ -550,3 +550,40 @@ input:focus, select:focus, textarea:focus {
   animation: shimmer 1.6s ease-in-out infinite;
   border-radius: 6px;
 }
+
+/* Glassmorphism Cosmic Cards */
+.card-glass {
+  background: rgba(22, 27, 39, 0.45) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 
+    0 10px 30px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+.card-glass:hover {
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 
+    0 15px 35px rgba(0, 0, 0, 0.35),
+    0 0 25px rgba(108, 71, 255, 0.15) !important;
+  transform: translateY(-2px);
+}
+
+/* Luxurious Light-Theme Frosted Glass Overrides */
+[data-theme="light"] .card-glass {
+  background: rgba(255, 255, 255, 0.65) !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  box-shadow: 
+    0 10px 30px rgba(15, 23, 42, 0.04),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
+  color: #0F172A !important;
+}
+[data-theme="light"] .card-glass:hover {
+  border-color: rgba(79, 70, 229, 0.25) !important;
+  box-shadow: 
+    0 15px 35px rgba(15, 23, 42, 0.08),
+    0 0 25px rgba(79, 70, 229, 0.1) !important;
+}
+
+
