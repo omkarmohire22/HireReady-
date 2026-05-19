@@ -9,14 +9,31 @@ import { useAuthStore } from '@/lib/authStore';
  * and the user object reflects the real backend DB user (not just the Google profile).
  */
 function TokenBridge() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const setAuth = useAuthStore(s => s.setAuth);
+  const logout = useAuthStore(s => s.logout);
   const currentToken = useAuthStore(s => s.token);
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated);
 
   useEffect(() => {
-    const backendToken = (session as any)?.backendToken;
-    if (!backendToken || backendToken === currentToken) return;
+    // If next-auth session is still loading, wait
+    if (status === 'loading') return;
 
+    const backendToken = (session as any)?.backendToken;
+
+    // SCENARIO 1: No active NextAuth session (User logged out or session expired)
+    if (!backendToken) {
+      // If Zustand/localStorage still holds a stale token, purge it immediately
+      if (isAuthenticated && currentToken) {
+        logout();
+      }
+      return;
+    }
+
+    // SCENARIO 2: Active NextAuth session, token matches current Zustand token -> do nothing
+    if (backendToken === currentToken) return;
+
+    // SCENARIO 3: Active NextAuth session, but token is different (User switched accounts or freshly signed in)
     // First set auth with Google profile info (immediate UX)
     setAuth(
       {
@@ -45,7 +62,7 @@ function TokenBridge() {
         }
       })
       .catch(() => { /* non-fatal — basic info already set */ });
-  }, [session, currentToken, setAuth]);
+  }, [session, status, currentToken, isAuthenticated, setAuth, logout]);
 
   return null;
 }
