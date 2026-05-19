@@ -83,8 +83,8 @@
   --text-hi:     #0F172A;
   --text-med:    #334155;
   --text-muted:  #475569;
-  --text-subtle: #94A3B8;
-  --text-faint:  #CBD5E1;
+  --text-subtle: #64748B;   /* Increased contrast slate for perfect visibility */
+  --text-faint:  #94A3B8;
 
   --border:       rgba(15, 23, 42, 0.06);   /* Ultra-thin slate dividers */
   --border-med:   rgba(15, 23, 42, 0.10);
