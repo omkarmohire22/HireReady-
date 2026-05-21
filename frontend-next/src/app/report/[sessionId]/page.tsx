@@ -10,7 +10,7 @@ const C = { primary: 'var(--teal)', accent: 'var(--purple)', success: 'var(--tea
 
 export default function ReportPage() {
   const params = useParams();
-  const sessionId = params?.sessionId || 'demo123';
+  const sessionId = (Array.isArray(params?.sessionId) ? params.sessionId[0] : params?.sessionId) || 'demo123';
   const reduceMotion = useReducedMotion();
   const hoverLift = reduceMotion ? undefined : { y: -3, scale: 1.01 };
   const tapDown = reduceMotion ? undefined : { scale: 0.99 };

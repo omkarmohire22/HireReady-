@@ -15,6 +15,7 @@ const C = {
   cardBg:  'var(--card-bg)',
   elevated: 'var(--elevated)',
   border:   'var(--border)',
+  grad:     'linear-gradient(135deg, var(--teal), var(--purple))',
 };
 
 const CompactCircleProgress = ({ value, size = 68, strokeWidth = 5, color = C.primary }: { value: number; size?: number; strokeWidth?: number; color?: string }) => {
