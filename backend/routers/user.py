@@ -97,3 +97,86 @@ async def upload_avatar(
         "message": "Avatar uploaded successfully from gallery."
     }
 
+# ─── Notifications Endpoints ───────────────────────────────────────────────
+from database.models import Notification as NotificationModel
+
+@router.get("/notifications")
+async def get_notifications(
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    notifications = db.query(NotificationModel).filter(
+        NotificationModel.user_id == current_user.id
+    ).order_by(NotificationModel.created_at.desc()).all()
+    
+    # Seed default notifications if none exist
+    if not notifications:
+        default_notifs = [
+            {
+                "title": "Welcome to HireReady! 🎉",
+                "message": "Tailor your interview prep by uploading a resume inside the Practice Arena."
+            },
+            {
+                "title": "Pro Access Available ⚡",
+                "message": "Upgrade your plan to unlock unlimited sessions and advanced communication analytics."
+            },
+            {
+                "title": "Database Preference Syncing 🌓",
+                "message": "Your Light/Dark mode settings are now saved in your account profile and synced globally."
+            }
+        ]
+        for notif_data in default_notifs:
+            new_notif = NotificationModel(
+                user_id=current_user.id,
+                title=notif_data["title"],
+                message=notif_data["message"],
+                read=False
+            )
+            db.add(new_notif)
+        db.commit()
+        # Refetch
+        notifications = db.query(NotificationModel).filter(
+            NotificationModel.user_id == current_user.id
+        ).order_by(NotificationModel.created_at.desc()).all()
+        
+    return [
+        {
+            "id": n.id,
+            "title": n.title,
+            "message": n.message,
+            "read": n.read,
+            "created_at": n.created_at.isoformat()
+        }
+        for n in notifications
+    ]
+
+@router.post("/notifications/{notif_id}/read")
+async def mark_notification_read(
+    notif_id: int,
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    notif = db.query(NotificationModel).filter(
+        NotificationModel.id == notif_id,
+        NotificationModel.user_id == current_user.id
+    ).first()
+    
+    if not notif:
+        raise HTTPException(status_code=404, detail="Notification not found")
+        
+    notif.read = True
+    db.commit()
+    return {"status": "success", "message": "Notification marked as read"}
+
+@router.post("/notifications/read-all")
+async def mark_all_notifications_read(
+    current_user: UserModel = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    db.query(NotificationModel).filter(
+        NotificationModel.user_id == current_user.id,
+        NotificationModel.read == False
+    ).update({NotificationModel.read: True}, synchronize_session=False)
+    db.commit()
+    return {"status": "success", "message": "All notifications marked as read"}
+

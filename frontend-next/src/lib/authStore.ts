@@ -7,6 +7,7 @@ export interface AuthUser {
   email: string;
   designation?: string;
   organisation?: string;
+  theme?: string;
 }
 
 interface AuthState {

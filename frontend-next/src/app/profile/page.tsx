@@ -61,6 +61,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
+  const [sessionPage, setSessionPage] = useState(0);
 
   const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -200,28 +201,44 @@ export default function ProfilePage() {
   // Build a mapped index of skill names and average user scores
   const skillScoresMap: Record<string, { total: number; count: number }> = {};
   sessions.forEach(s => {
-    if (s.score && s.missing_skills) {
-      // If a skill was not in missing_skills, user proficiency is high (~85%)
-      // If it was missing, proficiency is lower (~50%)
-      const allTargetSkills = s.missing_skills || [];
+    if (s.score && s.target_skills) {
+      const allTargetSkills = s.target_skills || [];
       allTargetSkills.forEach((sk: string) => {
         if (!skillScoresMap[sk]) skillScoresMap[sk] = { total: 0, count: 0 };
-        const isMissing = s.missing_skills.includes(sk);
+        const isMissing = s.missing_skills ? s.missing_skills.includes(sk) : false;
         skillScoresMap[sk].total += isMissing ? 55 : 85;
         skillScoresMap[sk].count += 1;
       });
     }
   });
 
-  const parsedSkills = Object.entries(skillScoresMap).map(([name, stat]) => ({
-    name,
-    val: Math.round(stat.total / stat.count),
-    color: name.toLowerCase().includes('react') || name.toLowerCase().includes('front') ? 'var(--purple)' : 'var(--teal)'
-  }));
+  // Merge evaluated skills with resume skills as baseline
+  const mergedSkillsMap: Record<string, number> = {};
+  
+  if (user?.resume_skills && Array.isArray(user.resume_skills)) {
+    user.resume_skills.forEach((sk: string) => {
+      mergedSkillsMap[sk] = 70; // baseline for skills mentioned in resume
+    });
+  }
+  
+  Object.entries(skillScoresMap).forEach(([name, stat]) => {
+    mergedSkillsMap[name] = Math.round(stat.total / stat.count);
+  });
 
-  // Fallbacks if no practice rounds completed
+  const parsedSkills = Object.entries(mergedSkillsMap).map(([name, val]) => {
+    let color = 'var(--teal)';
+    const n = name.toLowerCase();
+    if (n.includes('react') || n.includes('front') || n.includes('design') || n.includes('ui') || n.includes('next')) {
+      color = 'var(--purple)';
+    } else if (n.includes('python') || n.includes('docker') || n.includes('postgres') || n.includes('sql') || n.includes('aws') || n.includes('back')) {
+      color = 'var(--amber)';
+    }
+    return { name, val, color };
+  });
+
+  // Fallbacks if no practice rounds or resume skills found
   const finalSkills = parsedSkills.length > 0 ? parsedSkills.slice(0, 6) : [
-    { name: 'React / Frontend Development', val: user?.resume_skills?.includes('React') ? 80 : 40, color: 'var(--purple)' },
+    { name: 'React / Frontend Development', val: 40, color: 'var(--purple)' },
     { name: 'System Design & Scaling',        val: 35, color: 'var(--amber)' },
     { name: 'Communication & Pace Clarity',    val: 50, color: 'var(--teal)' },
     { name: 'Data Structures & Algorithms',    val: 45, color: '#F472B6' },
@@ -250,10 +267,8 @@ export default function ProfilePage() {
           <div style={{ position: 'relative', flexShrink: 0 }}>
             {/* The 64x64 circle container */}
             <div style={{ width: 64, height: 64, borderRadius: 16, background: 'var(--grad)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 28, color: '#fff', boxShadow: '0 4px 15px rgba(29,158,117,0.3)', overflow: 'hidden' }}>
-              {user?.avatar_url && user.avatar_url.startsWith('http') ? (
+              {user?.avatar_url && (user.avatar_url.startsWith('http') || user.avatar_url.startsWith('/')) ? (
                 <img src={user.avatar_url} alt={user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              ) : user?.avatar_url && user.avatar_url.startsWith('/') ? (
-                <img src={`http://localhost:8000${user.avatar_url}`} alt={user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               ) : user?.avatar_url ? (
                 <span style={{ fontSize: 32 }}>{user.avatar_url}</span>
               ) : (
@@ -294,6 +309,7 @@ export default function ProfilePage() {
                 { icon: Mic,  val: `${totalSessions}`,    label: 'Sessions' },
                 { icon: Star, val: bestScore > 0 ? `${bestScore}%` : '—',    label: 'Best Score' },
                 { icon: Zap,  val: `${streakDays} days`,  label: 'Streak' },
+                { icon: BookOpen, val: stats?.time_practiced_hours !== undefined ? `${stats.time_practiced_hours}h` : '0h', label: 'Time Spent' },
               ].map(stat => (
                 <div key={stat.label} style={{ background: 'var(--elevated)', borderRadius: 10, padding: '10px 16px', display: 'flex', alignItems: 'center', gap: 8, border: '1px solid var(--border)' }}>
                   <stat.icon size={14} color={C.primary} />
@@ -402,6 +418,226 @@ export default function ProfilePage() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* Practice Session History */}
+      <div className="card fade-up-3" style={{ padding: 24, marginBottom: 20 }}>
+        <h3 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: 18, display: 'flex', alignItems: 'center', gap: 8, marginBottom: 18 }}>
+          <ClipboardList size={18} color="var(--purple)" /> Practice Session History
+        </h3>
+        
+        {sessions.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '36px 0', color: 'var(--text-muted)' }}>
+            <AlertCircle size={28} style={{ margin: '0 auto 10px', opacity: 0.35 }} />
+            <p style={{ fontSize: 13.5 }}>You haven't completed any sessions yet.</p>
+            <Link href="/practice" className="btn-primary" style={{ display: 'inline-flex', marginTop: 14, padding: '8px 18px', fontSize: 13, gap: 6, alignItems: 'center', textDecoration: 'none' }}>
+              <Play size={13} fill="currentColor" /> Take Your First Mock Interview
+            </Link>
+          </div>
+        ) : (() => {
+          const pageSize = 5;
+          const totalPages = Math.ceil(sessions.length / pageSize);
+          const paginatedSessions = sessions.slice(sessionPage * pageSize, (sessionPage + 1) * pageSize);
+
+          return (
+            <>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {paginatedSessions.map((s) => {
+                  const hasScore = typeof s.score === 'number' && s.score >= 0;
+                  let scoreColor = '#EF4444'; // Red
+                  let scoreBg = 'rgba(239, 68, 68, 0.08)';
+                  let scoreBorder = 'rgba(239, 68, 68, 0.2)';
+                  
+                  if (hasScore) {
+                    if (s.score >= 80) {
+                      scoreColor = 'var(--teal)';
+                      scoreBg = 'rgba(29, 158, 117, 0.08)';
+                      scoreBorder = 'rgba(29, 158, 117, 0.2)';
+                    } else if (s.score >= 60) {
+                      scoreColor = 'var(--amber)';
+                      scoreBg = 'rgba(245, 158, 11, 0.08)';
+                      scoreBorder = 'rgba(245, 158, 11, 0.2)';
+                    }
+                  }
+
+                  return (
+                    <motion.div
+                      key={s.session_id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '16px 20px',
+                        background: 'var(--elevated)',
+                        border: '1px solid var(--border)',
+                        borderRadius: 12,
+                        flexWrap: 'wrap',
+                        gap: 12
+                      }}
+                      whileHover={{ y: -2, border: '1px solid rgba(108,71,255,0.3)', boxShadow: '0 4px 12px rgba(0,0,0,0.04)' }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 200 }}>
+                        <div style={{
+                          width: 40, height: 40, borderRadius: 10,
+                          background: s.session_type?.toLowerCase() === 'behavioral' ? 'rgba(139, 92, 246, 0.08)' : 'rgba(29, 158, 117, 0.08)',
+                          border: `1px solid ${s.session_type?.toLowerCase() === 'behavioral' ? 'rgba(139, 92, 246, 0.2)' : 'rgba(29, 158, 117, 0.2)'}`,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                        }}>
+                          <Mic size={16} color={s.session_type?.toLowerCase() === 'behavioral' ? '#8B5CF6' : 'var(--teal)'} />
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 700, fontSize: 14.5, color: 'var(--text-high)' }}>
+                            {s.role}
+                          </div>
+                          <div style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', gap: 8, marginTop: 2 }}>
+                            <span>Type: {s.session_type?.toUpperCase()}</span>
+                            <span>•</span>
+                            <span>Diff: {s.difficulty}</span>
+                            {s.duration && s.duration !== '—' && (
+                              <>
+                                <span>•</span>
+                                <span>{s.duration}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                          <span style={{ fontSize: 11, color: 'var(--text-subtle)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            {s.ago}
+                          </span>
+                          {hasScore ? (
+                            <div style={{
+                              color: scoreColor,
+                              background: scoreBg,
+                              border: `1px solid ${scoreBorder}`,
+                              padding: '2px 8px',
+                              borderRadius: 6,
+                              fontSize: 12,
+                              fontWeight: 700,
+                              display: 'inline-block',
+                              textAlign: 'center'
+                            }}>
+                              Score: {s.score}%
+                            </div>
+                          ) : (
+                            <div style={{
+                              color: 'var(--text-muted)',
+                              background: 'var(--border)',
+                              padding: '2px 8px',
+                              borderRadius: 6,
+                              fontSize: 11,
+                              fontWeight: 600,
+                              display: 'inline-block',
+                              textAlign: 'center'
+                            }}>
+                              In Progress
+                            </div>
+                          )}
+                        </div>
+
+                        {s.has_report || hasScore ? (
+                          <Link
+                            href={`/report/${s.session_id}`}
+                            style={{
+                              padding: '8px 16px',
+                              background: 'var(--teal)',
+                              color: '#fff',
+                              borderRadius: 8,
+                              fontSize: 12.5,
+                              fontWeight: 600,
+                              textDecoration: 'none',
+                              boxShadow: '0 2px 6px rgba(29, 158, 117, 0.2)',
+                              transition: 'all 0.15s ease',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4
+                            }}
+                            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(29, 158, 117, 0.95)'; }}
+                            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'var(--teal)'; }}
+                          >
+                            Report →
+                          </Link>
+                        ) : (
+                          <Link
+                            href={`/practice`}
+                            style={{
+                              padding: '8px 16px',
+                              background: 'var(--elevated)',
+                              border: '1px solid var(--border)',
+                              color: 'var(--text-muted)',
+                              borderRadius: 8,
+                              fontSize: 12.5,
+                              fontWeight: 600,
+                              textDecoration: 'none',
+                              transition: 'all 0.15s ease',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4
+                            }}
+                          >
+                            Resume
+                          </Link>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 18, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+                  <button
+                    type="button"
+                    disabled={sessionPage === 0}
+                    onClick={() => setSessionPage(prev => Math.max(0, prev - 1))}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: 8,
+                      background: 'var(--elevated)',
+                      border: '1px solid var(--border)',
+                      color: sessionPage === 0 ? 'var(--text-subtle)' : 'var(--text-high)',
+                      cursor: sessionPage === 0 ? 'not-allowed' : 'pointer',
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      opacity: sessionPage === 0 ? 0.5 : 1,
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    ← Previous
+                  </button>
+                  
+                  <span style={{ fontSize: 13, color: 'var(--text-muted)', fontWeight: 500 }}>
+                    Page {sessionPage + 1} of {totalPages}
+                  </span>
+
+                  <button
+                    type="button"
+                    disabled={sessionPage >= totalPages - 1}
+                    onClick={() => setSessionPage(prev => Math.min(totalPages - 1, prev + 1))}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: 8,
+                      background: 'var(--elevated)',
+                      border: '1px solid var(--border)',
+                      color: sessionPage >= totalPages - 1 ? 'var(--text-subtle)' : 'var(--text-high)',
+                      cursor: sessionPage >= totalPages - 1 ? 'not-allowed' : 'pointer',
+                      fontSize: 12.5,
+                      fontWeight: 600,
+                      opacity: sessionPage >= totalPages - 1 ? 0.5 : 1,
+                      transition: 'all 0.15s ease'
+                    }}
+                  >
+                    Next →
+                  </button>
+                </div>
+              )}
+            </>
+          );
+        })()}
       </div>
 
       {/* Quick Links */}
@@ -532,10 +768,8 @@ export default function ProfilePage() {
                   <div style={{ position: 'relative', width: 80, height: 80, borderRadius: 20, background: 'var(--grad)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-display)', fontWeight: 800, fontSize: 32, color: '#fff', boxShadow: '0 4px 15px rgba(29,158,117,0.3)', overflow: 'hidden' }}>
                     {avatarUploading ? (
                       <Loader2 size={24} style={{ animation: 'spin 1s linear infinite' }} />
-                    ) : editAvatarUrl && editAvatarUrl.startsWith('http') ? (
+                    ) : editAvatarUrl && (editAvatarUrl.startsWith('http') || editAvatarUrl.startsWith('/')) ? (
                       <img src={editAvatarUrl} alt="Avatar Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : editAvatarUrl && editAvatarUrl.startsWith('/') ? (
-                      <img src={editAvatarUrl.startsWith('/') ? `http://localhost:8000${editAvatarUrl}` : editAvatarUrl} alt="Avatar Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : editAvatarUrl ? (
                       <span style={{ fontSize: 40 }}>{editAvatarUrl}</span>
                     ) : (

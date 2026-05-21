@@ -54,7 +54,7 @@ export const api = {
         return res.json();
     },
 
-    updateMe: async (data: {name?: string, role?: string, avatar_url?: string, resume_skills?: string[]}) => {
+    updateMe: async (data: {name?: string, role?: string, avatar_url?: string, resume_skills?: string[], theme?: string}) => {
         const res = await fetch(`${BASE_URL}/auth/me`, {
             method: "PUT",
             headers: {
@@ -109,12 +109,30 @@ export const api = {
         return res.json();
     },
     
-    getNextQuestion: async (sessionId: string | number) => {
-        const res = await fetch(`${BASE_URL}/interview/${sessionId}/next`, {
-            headers: {"Authorization": `Bearer ${getToken()}`}
-        });
-        if (!res.ok) throw new Error("Failed to get question");
-        return res.json();
+    getNextQuestion: async (sessionId: string | number, _retry = true): Promise<any> => {
+        try {
+            const res = await fetch(`${BASE_URL}/interview/${sessionId}/next`, {
+                headers: {"Authorization": `Bearer ${getToken()}`}
+            });
+            if (!res.ok) {
+                const errBody = await res.json().catch(() => ({}));
+                const msg = errBody.detail || "Failed to get question";
+                // Retry once on server errors (500+)
+                if (_retry && res.status >= 500) {
+                    await new Promise(r => setTimeout(r, 1000));
+                    return api.getNextQuestion(sessionId, false);
+                }
+                throw new Error(msg);
+            }
+            return res.json();
+        } catch (err: any) {
+            // Retry once on network errors
+            if (_retry && err.name !== 'Error') {
+                await new Promise(r => setTimeout(r, 1000));
+                return api.getNextQuestion(sessionId, false);
+            }
+            throw err;
+        }
     },
 
     submitAnswer: async (sessionId: string | number, data: {question_id: string, question_text: string, answer_text: string, communication_metrics?: any}) => {
@@ -221,6 +239,64 @@ export const api = {
             headers: {"Authorization": `Bearer ${getToken()}`}
         });
         if (!res.ok) throw new Error("Failed to create checkout session");
+        return res.json();
+    },
+
+    matchSkills: async (data: {target_role?: string, job_description?: string}) => {
+        const res = await fetch(`${BASE_URL}/resume/match`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${getToken()}`
+            },
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || "Failed to calculate skill match alignment.");
+        }
+        return res.json();
+    },
+
+    editResumeSection: async (data: {section: string, section_text: string, target_role: string, skill_gaps: string[]}) => {
+        const res = await fetch(`${BASE_URL}/resume/edit`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${getToken()}`
+            },
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || "Failed to optimize resume section.");
+        }
+        return res.json();
+    },
+
+    getNotifications: async () => {
+        const res = await fetch(`${BASE_URL}/user/notifications`, {
+            headers: {"Authorization": `Bearer ${getToken()}`}
+        });
+        if (!res.ok) throw new Error("Failed to fetch notifications");
+        return res.json();
+    },
+
+    markNotificationRead: async (notifId: number) => {
+        const res = await fetch(`${BASE_URL}/user/notifications/${notifId}/read`, {
+            method: "POST",
+            headers: {"Authorization": `Bearer ${getToken()}`}
+        });
+        if (!res.ok) throw new Error("Failed to mark notification as read");
+        return res.json();
+    },
+
+    markAllNotificationsRead: async () => {
+        const res = await fetch(`${BASE_URL}/user/notifications/read-all`, {
+            method: "POST",
+            headers: {"Authorization": `Bearer ${getToken()}`}
+        });
+        if (!res.ok) throw new Error("Failed to mark all notifications as read");
         return res.json();
     }
 };

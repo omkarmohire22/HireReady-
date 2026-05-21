@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, JSON
+from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, JSON, Boolean
 from sqlalchemy.orm import declarative_base, relationship
 from datetime import datetime
 
@@ -14,6 +14,7 @@ class User(Base):
     role = Column(String, nullable=True)
     subscription = Column(String, default="free")
     avatar_url = Column(String, nullable=True)
+    theme = Column(String, default="dark")
     total_sessions = Column(Integer, default=0)
     resume_skills = Column(JSON, default=list)
     created_at = Column(DateTime, default=datetime.utcnow)
@@ -22,6 +23,7 @@ class User(Base):
     sessions = relationship("Session", back_populates="user")
     answers = relationship("Answer", back_populates="user")
     reports = relationship("Report", back_populates="user")
+    notifications = relationship("Notification", back_populates="user")
 
 class Session(Base):
     __tablename__ = "sessions"
@@ -102,3 +104,15 @@ class Question(Base):
     avg_score_received = Column(Float, default=0.0)
     quality_rating = Column(Float, default=5.0)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+class Notification(Base):
+    __tablename__ = "notifications"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    title = Column(String, nullable=False)
+    message = Column(Text, nullable=False)
+    read = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    user = relationship("User", back_populates="notifications")

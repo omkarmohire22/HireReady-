@@ -374,17 +374,10 @@ export default function SettingsPage() {
                     setSaving(true);
                     try {
                       // Call backend subscription upgrade endpoint
-                      const token = localStorage.getItem('token');
-                      const res = await fetch('http://localhost:8000/api/user/subscribe/pro', {
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${token}` }
-                      });
-                      if (res.ok) {
-                        const data = await res.json();
-                        setUser((prev: any) => ({ ...prev, subscription: 'pro' }));
-                        setSaveSuccess(true);
-                        setTimeout(() => setSaveSuccess(false), 3000);
-                      }
+                      await api.upgradePlan();
+                      setUser((prev: any) => ({ ...prev, subscription: 'pro' }));
+                      setSaveSuccess(true);
+                      setTimeout(() => setSaveSuccess(false), 3000);
                     } catch (e) {
                       console.error(e);
                     } finally {

@@ -39,6 +39,7 @@ export function useInterviewAudio(questionText: string, paused: boolean = false)
   const savedBlobRef = useRef<Blob | null>(null);
   const activeAudioRef = useRef<HTMLAudioElement | null>(null);
   const currentSpeakingTextRef = useRef<string | null>(null);
+  const transcriptionDoneResolverRef = useRef<((result: { transcription: string; voiceAnalysis: VoiceAnalysis }) => void) | null>(null);
 
   // Sync accent color to session state
   useEffect(() => {
@@ -263,6 +264,14 @@ export function useInterviewAudio(questionText: string, paused: boolean = false)
           const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
           savedBlobRef.current = blob;
           await sendForTranscription(blob);
+          // Resolve the finishAndGetTranscription promise if someone is waiting
+          if (transcriptionDoneResolverRef.current) {
+            transcriptionDoneResolverRef.current({
+              transcription: transcriptRef.current || 'No verbal response detected.',
+              voiceAnalysis: {},  // voiceAnalysis state will be set by sendForTranscription
+            });
+            transcriptionDoneResolverRef.current = null;
+          }
         };
         recorder.start();
       } catch (e) {
@@ -292,7 +301,7 @@ export function useInterviewAudio(questionText: string, paused: boolean = false)
             if (mediaRecorderRef.current?.state === 'recording') {
               mediaRecorderRef.current.stop();
             }
-          }, 4500); // Increased from 2s to 4.5s for more natural thinking pauses
+          }, 2500); // Reduced from 4.5s to 2.5s for faster transitions
         }
         rafRef.current = requestAnimationFrame(updateData);
       };
@@ -421,6 +430,63 @@ export function useInterviewAudio(questionText: string, paused: boolean = false)
     setFftData(new Uint8Array(64));
   }, []);
 
+  // ── Async finish: stops recording and waits for transcription to complete ──
+  const finishAndGetTranscription = useCallback((): Promise<{ transcription: string; voiceAnalysis: VoiceAnalysis }> => {
+    return new Promise((resolve) => {
+      // Cancel silence timer so it doesn't fire during our controlled stop
+      if (silenceTimerRef.current) clearTimeout(silenceTimerRef.current);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+
+      // Stop speech recognition
+      if (recognitionRef.current) {
+        try { recognitionRef.current.stop(); } catch (e) {}
+        recognitionRef.current = null;
+      }
+
+      // Stop speech synthesis
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+      if (activeAudioRef.current) {
+        try { activeAudioRef.current.pause(); activeAudioRef.current.src = ''; } catch (e) {}
+        activeAudioRef.current = null;
+      }
+      currentSpeakingTextRef.current = null;
+
+      // If mediaRecorder is recording, stop it and wait for onstop → sendForTranscription to complete
+      if (mediaRecorderRef.current?.state === 'recording') {
+        transcriptionDoneResolverRef.current = resolve;
+        mediaRecorderRef.current.stop();
+
+        // Safety timeout: resolve after 8s even if transcription API hangs
+        setTimeout(() => {
+          if (transcriptionDoneResolverRef.current) {
+            transcriptionDoneResolverRef.current = null;
+            resolve({
+              transcription: transcriptRef.current || 'No verbal response detected.',
+              voiceAnalysis: {},
+            });
+          }
+        }, 8000);
+      } else {
+        // Recorder already stopped or never started — resolve immediately
+        resolve({
+          transcription: transcriptRef.current || 'No verbal response detected.',
+          voiceAnalysis: {},
+        });
+      }
+
+      // Stop mic stream tracks
+      if (streamRef.current) streamRef.current.getTracks().forEach(t => t.stop());
+      if (audioCtxRef.current) audioCtxRef.current.close().catch(() => {});
+
+      streamRef.current = null;
+      audioCtxRef.current = null;
+      analyserRef.current = null;
+      mediaRecorderRef.current = null;
+      setRmsLevel(0);
+      setFftData(new Uint8Array(64));
+    });
+  }, []);
+
   // Synchronise paused state changes with audio playing and speech recording
   useEffect(() => {
     if (paused) {
@@ -468,6 +534,7 @@ export function useInterviewAudio(questionText: string, paused: boolean = false)
     isRecordingSaved,
     startSpeaking,
     stopSession,
+    finishAndGetTranscription,
     saveRecording,
     downloadRecording,
     hasMicAccess: !!streamRef.current,

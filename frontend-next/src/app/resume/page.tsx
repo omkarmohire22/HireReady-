@@ -117,7 +117,6 @@ export default function ResumeAnalyzerPage() {
 
     if (!silentSkillsList) setMatching(true);
     try {
-      const token = localStorage.getItem('token');
       const payload: any = {};
       if (matchMode === 'custom') {
         if (!customJobDesc.trim()) {
@@ -129,27 +128,16 @@ export default function ResumeAnalyzerPage() {
         payload.target_role = selectedRole;
       }
 
-      const res = await fetch('http://localhost:8000/api/resume/match', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
+      const data = await api.matchSkills(payload);
       
-      if (res.ok) {
-        const data = await res.json();
-        
-        // Track match improvement live!
-        if (matchData && data.overall_match_score > matchData.overall_match_score) {
-          const diff = data.overall_match_score - matchData.overall_match_score;
-          setDeltaBadge(`+${diff.toFixed(1)}% ↑ Match Increase!`);
-          setTimeout(() => setDeltaBadge(null), 5000);
-        }
-        
-        setMatchData(data);
+      // Track match improvement live!
+      if (matchData && data.overall_match_score > matchData.overall_match_score) {
+        const diff = data.overall_match_score - matchData.overall_match_score;
+        setDeltaBadge(`+${diff.toFixed(1)}% ↑ Match Increase!`);
+        setTimeout(() => setDeltaBadge(null), 5000);
       }
+      
+      setMatchData(data);
     } catch (err) {
       console.error(err);
     } finally {
@@ -180,27 +168,16 @@ export default function ResumeAnalyzerPage() {
     setOptimizing(true);
     setOptSuccess(false);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:8000/api/resume/edit', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          section: editorSection,
-          section_text: sectionText,
-          target_role: selectedRole,
-          skill_gaps: gaps.slice(0, 3) // Target the top 3 gaps!
-        })
+      const data = await api.editResumeSection({
+        section: editorSection,
+        section_text: sectionText,
+        target_role: selectedRole,
+        skill_gaps: gaps.slice(0, 3) // Target the top 3 gaps!
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        const lines = data.rewritten_text.split('\n').map((l: string) => l.trim().replace(/^[•\s*-]+/g, '')).filter((l: string) => l);
-        setProposalBullets(lines);
-        setOptSuccess(true);
-      }
+      const lines = data.rewritten_text.split('\n').map((l: string) => l.trim().replace(/^[•\s*-]+/g, '')).filter((l: string) => l);
+      setProposalBullets(lines);
+      setOptSuccess(true);
     } catch (err) {
       console.error(err);
     } finally {

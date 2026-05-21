@@ -402,13 +402,6 @@ class QuestionGeneratorService:
             if candidates:
                 return random.choice(candidates)
 
-        # Fuzzy: try skill match ignoring role
-        for (r, s, d), qs in QUESTION_BANK.items():
-            if s.lower() == skill.lower() and d == norm_diff:
-                candidates = [q for q in qs if q not in exclude_set]
-                if candidates:
-                    return random.choice(candidates)
-
         return None
 
     # ── 4. Pick from CSV dataset (difficulty + session_type aware) ────────────
@@ -433,13 +426,6 @@ class QuestionGeneratorService:
             if candidates:
                 return random.choice(candidates)
 
-        # Skill-only fallback across all roles
-        for (r, s, d, t), qs in self.dataset_questions.items():
-            if s.lower() == skill.lower() and d == norm_diff and t == norm_stype:
-                candidates = [q for q in qs if q not in exclude_set]
-                if candidates:
-                    return random.choice(candidates)
-
         return None
 
     # ── 5. FLAN-T5 generation (difficulty-aware) ───────────────────────────────
@@ -459,41 +445,58 @@ class QuestionGeneratorService:
 
             if norm_stype == "behavioural":
                 prompt = (
-                    f"Generate a {norm_diff} difficulty behavioural interview question for a {role} "
-                    f"about their experience with {skill}. Focus on leadership, conflict, or problem-solving."
+                    f"Generate a unique {norm_diff} difficulty behavioural interview question "
+                    f"specifically for a {role} role about their real-world experience with {skill}. "
+                    f"Focus on leadership, conflict resolution, or creative problem-solving. "
+                    f"The question must be specific to the {role} role and not generic. End with a question mark."
                 )
             elif norm_stype == "system_design":
                 prompt = (
-                    f"Generate a {norm_diff} difficulty system design interview question for a {role} "
-                    f"focusing on {skill} architecture, scalability, and trade-offs."
+                    f"Generate a unique {norm_diff} difficulty system design interview question "
+                    f"specifically for a {role} about designing systems with {skill}. "
+                    f"Focus on architecture decisions, scalability trade-offs, and real-world constraints "
+                    f"that a {role} would face. End with a question mark."
                 )
             else:
                 difficulty_context = {
                     "Easy": "a foundational concept, definition, or basic use case",
-                    "Medium": "a practical scenario requiring applied knowledge",
-                    "Hard": "a complex production-level problem requiring deep expertise",
+                    "Medium": "a practical scenario requiring applied knowledge and debugging skills",
+                    "Hard": "a complex production-level problem requiring deep expertise and trade-off analysis",
                 }
+                # Add randomized framing to increase diversity across calls
+                framing = random.choice([
+                    "scenario-based", "debugging-focused", "comparison-oriented",
+                    "architecture-related", "optimization-focused", "troubleshooting",
+                ])
                 prompt = (
-                    f"Generate a {norm_diff} difficulty technical interview question for a {role} about {skill}. "
+                    f"Generate a unique {norm_diff} difficulty {framing} technical interview question "
+                    f"for a {role} about {skill}. "
                     f"The question should cover {difficulty_context.get(norm_diff, 'applied knowledge')}. "
-                    f"End with a question mark."
+                    f"Make the question specific to the {role} role. End with a question mark."
                 )
 
-            inputs = self.tokenizer(prompt, return_tensors="pt", max_length=128, truncation=True)
+            inputs = self.tokenizer(prompt, return_tensors="pt", max_length=160, truncation=True)
             outputs = self.model.generate(
                 inputs.input_ids,
-                max_new_tokens=80,
-                num_beams=4,
-                num_return_sequences=3,
+                max_new_tokens=100,
+                num_beams=5,
+                num_return_sequences=5,
                 do_sample=True,
-                temperature=0.85,
+                temperature=0.92,
                 no_repeat_ngram_size=3,
+                top_p=0.95,
             )
             candidates = [self.tokenizer.decode(o, skip_special_tokens=True).strip() for o in outputs]
             exclude_set = set(exclude or [])
+            # Shuffle candidates to add randomness across calls
+            random.shuffle(candidates)
             for c in candidates:
                 if len(c.split()) >= 8 and c.endswith("?") and c not in exclude_set:
                     return c
+            # Return first valid candidate even if it doesn't end with ?
+            for c in candidates:
+                if len(c.split()) >= 6 and c not in exclude_set:
+                    return c + ("?" if not c.endswith("?") else "")
             return candidates[0] if candidates else None
         except Exception as e:
             print(f"[QuestionGen] Model generation error: {e}")

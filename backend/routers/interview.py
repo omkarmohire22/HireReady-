@@ -230,35 +230,64 @@ async def get_next_question(
 
     skill_to_test = missing_skills[questions_answered]
 
-    # ── Anti-repetition: fetch all already-asked question texts for this session
-    asked_rows = db.query(AnswerModel.question_text).filter(
-        AnswerModel.session_id == session.id
-    ).all()
-    exclude_list = [row[0] for row in asked_rows if row[0]]
+    # ── Anti-repetition: fetch questions from THIS session + user's last 5 sessions
+    try:
+        from database.models import Session as SessionModel
+        # Current session questions
+        asked_rows = db.query(AnswerModel.question_text).filter(
+            AnswerModel.session_id == session.id
+        ).all()
+        exclude_list = [row[0] for row in asked_rows if row[0]]
+
+        # Cross-session dedup: also exclude questions from user's recent 5 sessions
+        recent_session_ids = (
+            db.query(SessionModel.id)
+            .filter(
+                SessionModel.user_id == current_user.id,
+                SessionModel.id != session.id,
+            )
+            .order_by(SessionModel.created_at.desc())
+            .limit(5)
+            .all()
+        )
+        if recent_session_ids:
+            recent_ids = [r[0] for r in recent_session_ids]
+            cross_session_rows = db.query(AnswerModel.question_text).filter(
+                AnswerModel.session_id.in_(recent_ids)
+            ).all()
+            exclude_list.extend([row[0] for row in cross_session_rows if row[0]])
+    except Exception as e:
+        print(f"[Interview] Warning: dedup query failed: {e}")
+        exclude_list = []
 
     # ── Generate question: bank → CSV → FLAN-T5 → template (all difficulty-aware)
-    generator = get_question_generator()
-    if generator is not None:
-        gen_result = generator.generate_question(
-            skill=skill_to_test,
-            role=session.target_role,
-            exclude=exclude_list,
-            difficulty=difficulty,
-            session_type=stype,
-        )
-        question_text = gen_result.get(
-            "generated_question",
-            f"Walk me through your experience with {skill_to_test} as a {session.target_role}."
-        )
-        source_difficulty = gen_result.get("difficulty", difficulty)
-    else:
-        # Hardcoded fallback when model service is completely unavailable
-        difficulty_prompts = {
-            "Easy":   f"What is {skill_to_test} and why is it important for a {session.target_role}?",
-            "Medium": f"You are a {session.target_role}. Walk me through integrating {skill_to_test} into a production system.",
-            "Hard":   f"You are a {session.target_role}. A production incident has been traced to your {skill_to_test} implementation. Diagnose and resolve it.",
-        }
-        question_text = difficulty_prompts.get(difficulty, difficulty_prompts["Medium"])
+    try:
+        generator = get_question_generator()
+        if generator is not None:
+            gen_result = generator.generate_question(
+                skill=skill_to_test,
+                role=session.target_role,
+                exclude=exclude_list,
+                difficulty=difficulty,
+                session_type=stype,
+            )
+            question_text = gen_result.get(
+                "generated_question",
+                f"Walk me through your experience with {skill_to_test} as a {session.target_role}."
+            )
+            source_difficulty = gen_result.get("difficulty", difficulty)
+        else:
+            # Hardcoded fallback when model service is completely unavailable
+            difficulty_prompts = {
+                "Easy":   f"What is {skill_to_test} and why is it important for a {session.target_role}?",
+                "Medium": f"You are a {session.target_role}. Walk me through integrating {skill_to_test} into a production system.",
+                "Hard":   f"You are a {session.target_role}. A production incident has been traced to your {skill_to_test} implementation. Diagnose and resolve it.",
+            }
+            question_text = difficulty_prompts.get(difficulty, difficulty_prompts["Medium"])
+            source_difficulty = difficulty
+    except Exception as e:
+        print(f"[Interview] Question generation error: {e}")
+        question_text = f"As a {session.target_role}, explain your approach to working with {skill_to_test} in a production environment."
         source_difficulty = difficulty
 
     return {

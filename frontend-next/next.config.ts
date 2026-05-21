@@ -8,6 +8,11 @@ const nextConfig: NextConfig = {
   },
   async rewrites() {
     return [
+      // Relative proxy for uploaded user assets (avatars, etc.)
+      {
+        source: "/uploads/:path*",
+        destination: `${BACKEND_URL}/uploads/:path*`,
+      },
       // Legacy /api/backend/* proxy (kept for backwards compatibility)
       {
         source: "/api/backend/:path*",

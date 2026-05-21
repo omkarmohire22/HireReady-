@@ -30,3 +30,12 @@ def get_db():
 # Function to create all tables (used in main.py startup)
 def init_db():
     Base.metadata.create_all(bind=engine)
+    
+    # Safely migrate database schema: add theme column if it does not exist
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS theme VARCHAR DEFAULT 'dark';"))
+            conn.commit()
+        except Exception as e:
+            print("Failed to add column 'theme' to users table:", e)

@@ -197,8 +197,9 @@ export default function InterviewPanel({ onEnd }: { onEnd: () => void }) {
   const [currentQ, setCurrentQ] = useState<{ text: string; hint: string; tag: string; id: string; difficulty: string } | null>(null);
   const [isLoadingQ, setIsLoadingQ] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const fetchNextQuestion = async () => {
+  const fetchNextQuestion = async (retries = 2): Promise<void> => {
     setIsLoadingQ(true);
     try {
       const res = await api.getNextQuestion(sessionId);
@@ -217,7 +218,12 @@ export default function InterviewPanel({ onEnd }: { onEnd: () => void }) {
         setIsLoadingQ(false);
       }
     } catch (err) {
-      console.error(err);
+      console.error('fetchNextQuestion error:', err);
+      if (retries > 0) {
+        // Retry after a short delay
+        await new Promise(r => setTimeout(r, 800));
+        return fetchNextQuestion(retries - 1);
+      }
       setIsLoadingQ(false);
     }
   };
@@ -227,7 +233,7 @@ export default function InterviewPanel({ onEnd }: { onEnd: () => void }) {
   }, []);
 
   const [paused, setPaused] = useState(false);
-  const { sessionState, isSpeaking, isListening, isEvaluating, currentWPM, rmsLevel, fftData, transcription, isSilent, startSpeaking, stopSession, saveRecording, downloadRecording, voiceAnalysis, isRecordingSaved, hasMicAccess } = useInterviewAudio(currentQ?.text || "", paused);
+  const { sessionState, isSpeaking, isListening, isEvaluating, currentWPM, rmsLevel, fftData, transcription, isSilent, startSpeaking, stopSession, finishAndGetTranscription, saveRecording, downloadRecording, voiceAnalysis, isRecordingSaved, hasMicAccess } = useInterviewAudio(currentQ?.text || "", paused);
 
   const [counter, setCounter] = useState(0);
   const [questionTimer, setQuestionTimer] = useState(QUESTION_TIME);
@@ -301,16 +307,20 @@ export default function InterviewPanel({ onEnd }: { onEnd: () => void }) {
   const words = transcription.split(' ').filter(Boolean);
 
   const handleNextQuestion = async () => {
-    if (!currentQ || isSubmitting) return;
+    if (!currentQ || isSubmitting || isAnalyzing) return;
     setIsSubmitting(true);
+    setIsAnalyzing(true);
     try {
-      // Stop all background microphone and speech recognition streams immediately to prevent audio overlap/leak
-      stopSession();
+      // Await full transcription + voice analysis before submitting (fixes race condition)
+      const result = await finishAndGetTranscription();
+      const finalTranscription = result.transcription || transcription || 'No verbal response detected.';
+
+      setIsAnalyzing(false);
 
       const scoreData = await api.submitAnswer(sessionId, {
         question_id: currentQ.id,
         question_text: currentQ.text,
-        answer_text: transcription || "No verbal response detected.",
+        answer_text: finalTranscription,
         communication_metrics: voiceAnalysis
       });
       
@@ -321,6 +331,7 @@ export default function InterviewPanel({ onEnd }: { onEnd: () => void }) {
     } catch (err) {
       console.error(err);
     } finally {
+      setIsAnalyzing(false);
       setIsSubmitting(false);
     }
   };
@@ -452,6 +463,31 @@ export default function InterviewPanel({ onEnd }: { onEnd: () => void }) {
             </div>
           ) : currentQ && (
             <>
+
+          {/* Analyzing Response Overlay */}
+          <AnimatePresence>
+            {isAnalyzing && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+                className="rounded-2xl p-8 text-center border border-[#F59E0B]/30"
+                style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.08), rgba(99,102,241,0.08))', backdropFilter: 'blur(8px)' }}
+              >
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative w-16 h-16">
+                    <div className="absolute inset-0 rounded-full border-2 border-[#F59E0B]/30 animate-ping" />
+                    <div className="absolute inset-2 rounded-full border-2 border-t-[#F59E0B] border-r-transparent border-b-transparent border-l-transparent animate-spin" />
+                    <div className="absolute inset-4 rounded-full bg-[#F59E0B]/10 flex items-center justify-center">
+                      <span className="text-xl">🎯</span>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[13px] font-bold uppercase tracking-[0.2em] text-[#F59E0B] mb-1">Analyzing Your Response</p>
+                    <p className="text-[12px] text-[var(--text-muted)]">Transcribing audio & evaluating communication metrics…</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* AI Question Card */}
           <div className="relative rounded-2xl p-6 transition-all duration-400"

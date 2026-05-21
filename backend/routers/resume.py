@@ -266,6 +266,78 @@ class ResumeEditRequest(BaseModel):
     skill_gaps: List[str]
 
 
+# High-impact professional synonyms for ordinary action verbs
+VERB_MAPPING = {
+    "developed": "Engineered and deployed",
+    "develop": "Engineer and deploy",
+    "built": "Architected and delivered",
+    "build": "Architect and deliver",
+    "managed": "Orchestrated and optimized",
+    "manage": "Orchestrate and optimize",
+    "designed": "Designed and prototyped",
+    "design": "Design and prototype",
+    "implemented": "Successfully integrated",
+    "implement": "Successfully integrate",
+    "created": "Conceptualized and built",
+    "create": "Conceptualize and build",
+    "wrote": "Engineered high-quality code for",
+    "write": "Engineer high-quality code for",
+    "led": "Spearheaded key initiatives for",
+    "lead": "Spearhead key initiatives for",
+    "helped": "Collaborated actively to optimize",
+    "help": "Collaborate actively to optimize",
+    "assisted": "Collaborated actively to optimize",
+    "assist": "Collaborate actively to optimize",
+    "worked": "Contributed high-impact engineering to",
+    "work": "Contribute high-impact engineering to",
+    "improved": "Refactored and optimized",
+    "improve": "Refactor and optimize",
+    "optimized": "Optimized and scaled",
+    "optimize": "Optimize and scale",
+}
+
+# Grammatically structured integration clauses for popular technical skills
+SKILL_CLAUSES = {
+    "docker": "leveraging Docker to containerize and standardize application environments",
+    "kubernetes": "deploying containerized services and orchestrating clustering layers using Kubernetes",
+    "fastapi": "engineering high-throughput server-side API endpoints with FastAPI",
+    "django": "utilizing Django to construct robust, enterprise-grade MVC systems",
+    "postgresql": "designing high-performance relational database schemas with PostgreSQL",
+    "mongodb": "utilizing MongoDB to secure flexible, high-speed non-relational document storage",
+    "aws": "deploying and monitoring highly scalable serverless architectures on AWS",
+    "rest api": "designing and documenting secure, production-grade REST APIs",
+    "git": "establishing structured Git version control and collaborative workflows",
+    "graphql": "optimizing frontend-backend data fetching layers using GraphQL",
+    "typescript": "ensuring code-base type safety and modular application logic with TypeScript",
+    "react": "building highly responsive and dynamic user-facing interactive components with React",
+    "next.js": "leveraging Next.js to implement server-side rendering and optimize client page routing",
+    "python": "utilizing Python to write clean, high-performance computational logic",
+    "node.js": "leveraging Node.js to architect highly concurrent, event-driven backend microservices",
+    "microservices": "refactoring monolithic platforms into scalable, isolated microservices",
+    "kafka": "integrating high-throughput asynchronous event-streaming pipelines using Kafka",
+    "redis": "implementing high-speed memory caching mechanisms with Redis to cut latency",
+    "ci/cd": "orchestrating automated testing and staging deployments via robust CI/CD pipelines",
+    "system design": "applying clean system design principles to ensure horizontal and vertical scalability",
+}
+
+def enhance_action_verbs(bullet: str) -> str:
+    words = bullet.split()
+    if not words:
+        return bullet
+    
+    first_word = words[0].strip().rstrip(",.")
+    first_word_lower = first_word.lower()
+    
+    if first_word_lower in VERB_MAPPING:
+        premium_verb = VERB_MAPPING[first_word_lower]
+        # Keep punctuation of original first word if any (e.g. "Developed,")
+        punctuation = "".join([c for c in first_word if c in ",.:;"])
+        rest = " ".join(words[1:])
+        return f"{premium_verb}{punctuation} {rest}"
+        
+    return bullet
+
+
 @router.post("/edit")
 async def edit_resume_section(
     body: ResumeEditRequest,
@@ -311,9 +383,9 @@ async def edit_resume_section(
         else:
             # Professionally rephrase and integrate gaps into their existing statement
             rewritten = (
-                f"Dynamic and detail-oriented Software Professional. "
+                f"Dynamic and detail-oriented {role}. "
                 f"{cleaned_text.rstrip('.')}—expertly leveraging robust proficiency in {gaps_str} "
-                f"to optimize enterprise architectures, streamline integration pipelines, and drive high-performance user experiences."
+                f"to optimize system architectures, streamline backend integrations, and deliver high-performance user experiences."
             )
             
     elif section == "Experience":
@@ -321,67 +393,80 @@ async def edit_resume_section(
         bullets = [line.strip().lstrip("-*• ") for line in raw_text.splitlines() if clean_input_text(line)]
         enhanced_bullets = []
         
-        # Add quantified technical bullets based on their missing skills
-        if len(gaps) >= 1:
-            g1 = gaps[0]
-            enhanced_bullets.append(
-                f"Spearheaded core feature engineering for enterprise-scale {role} systems, "
-                f"integrating {g1} paradigms to modularize workflows and decrease client-side load latency by 32%."
-            )
-        if len(gaps) >= 2:
-            g2 = gaps[1]
-            enhanced_bullets.append(
-                f"Orchestrated backend data pipeline migrations, leveraging {g2} clusters to secure stateful "
-                f"communications and improve computational throughput by 24%."
-            )
-        if len(gaps) > 2:
-            rest = ", ".join(gaps[2:])
-            enhanced_bullets.append(
-                f"Collaborated on agile deployment cycles, utilizing {rest} to automate localized testing routines "
-                f"and ensure compliance across production branches."
-            )
+        # If no bullets existed, ensure we return a stunning professional set of bullet lines tailored to gaps
+        if not bullets:
+            clauses = []
+            for gap in gaps[:3]:
+                clause = SKILL_CLAUSES.get(gap.lower(), f"incorporating {gap} to elevate project reliability")
+                clauses.append(clause)
             
-        # Append existing valid bullets professionally rephrased
-        for b in bullets:
-            if len(b) > 8:
-                rephrased = f"Enhanced software reliability by actively leading {b[0].lower() + b[1:]}"
+            enhanced_bullets = [
+                f"Architected and deployed responsive backend architectures for modern {role} platforms, {clauses[0] if len(clauses) > 0 else 'elevating engineering standards'}.",
+                f"Optimized containerized staging pipelines to achieve modular deployment standards, {clauses[1] if len(clauses) > 1 else 'integrating robust security policies'}.",
+                f"Collaborated within cross-functional teams to design scalable schemas, {clauses[2] if len(clauses) > 2 else 'refactoring code for modularity'}."
+            ]
+        else:
+            # Rephrase each existing bullet and distribute the skill gaps across them
+            for idx, b in enumerate(bullets):
+                # Enhance action verb
+                rephrased = enhance_action_verbs(b)
+                
+                # Interweave a gap if we still have undistributed gaps
+                if idx < len(gaps):
+                    gap = gaps[idx]
+                    clause = SKILL_CLAUSES.get(gap.lower(), f"leveraging {gap} to optimize features")
+                    # Clean sentence punctuation before appending clause
+                    rephrased_clean = rephrased.rstrip(".,; ")
+                    rephrased = f"{rephrased_clean}, {clause}"
+                
+                # Ensure it ends with a period
+                if not rephrased.endswith("."):
+                    rephrased += "."
                 enhanced_bullets.append(rephrased)
                 
-        # If no bullets existed, ensure we return a stunning professional set of bullet lines
-        if not enhanced_bullets:
-            enhanced_bullets = [
-                f"Designed and deployed responsive backend architectures for modern {role} platforms, leveraging {gaps_str} to streamline API operations.",
-                "Optimized containerized staging pipelines to achieve modular deployment standards and cut CI/CD durations by 18%."
-            ]
-            
         rewritten = "\n".join([f"• {b}" for b in enhanced_bullets])
         
     elif section == "Projects":
         lines = [line.strip().lstrip("-*• ") for line in raw_text.splitlines() if clean_input_text(line)]
         enhanced_projects = []
         
-        if len(gaps) >= 1:
-            g1 = gaps[0]
-            enhanced_projects.append(
-                f"Distributed Service Hub: Built a localized high-throughput application incorporating {g1} "
-                f"to coordinate real-time asynchronous client updates and track telemetry logs."
-            )
-        if len(gaps) > 1:
-            rest = ", ".join(gaps[1:])
-            enhanced_projects.append(
-                f"Infrastructure Telemetry Suite: Developed containerized clustering layers deploying {rest} "
-                f"to monitor local application health metrics and automate failover triggers."
-            )
-            
-        for l in lines:
-            if len(l) > 8:
-                enhanced_projects.append(f"Full-Stack Suite: {l}")
-                
-        if not enhanced_projects:
+        # If no projects existed, return custom high-quality projects
+        if not lines:
+            c1 = SKILL_CLAUSES.get(gaps[0].lower(), f"utilizing {gaps[0]}") if len(gaps) > 0 else "modern frameworks"
+            c2 = SKILL_CLAUSES.get(gaps[1].lower(), f"deploying {gaps[1]}") if len(gaps) > 1 else "clean architecture"
             enhanced_projects = [
-                f"Enterprise Cluster Deployment: Prototyped a robust orchestration suite using {gaps_str} to automate localized client states.",
-                "Responsive Application Lab: Configured asynchronous event layers and automated API testing sequences."
+                f"Distributed Service Hub: Engineered a high-throughput microservice architecture, {c1}.",
+                f"Infrastructure Telemetry Suite: Configured automated clustering and deployment pipelines, {c2}."
             ]
+        else:
+            # Rephrase existing project details and distribute gaps
+            for idx, line in enumerate(lines):
+                # Handle title vs description split if there is a colon
+                if ":" in line:
+                    title, desc = line.split(":", 1)
+                    title = title.strip()
+                    desc_rephrased = enhance_action_verbs(desc.strip())
+                    
+                    if idx < len(gaps):
+                        gap = gaps[idx]
+                        clause = SKILL_CLAUSES.get(gap.lower(), f"leveraging {gap} to optimize operations")
+                        desc_rephrased_clean = desc_rephrased.rstrip(".,; ")
+                        desc_rephrased = f"{desc_rephrased_clean}, {clause}"
+                    
+                    if not desc_rephrased.endswith("."):
+                        desc_rephrased += "."
+                    enhanced_projects.append(f"{title}: {desc_rephrased}")
+                else:
+                    rephrased = enhance_action_verbs(line)
+                    if idx < len(gaps):
+                        gap = gaps[idx]
+                        clause = SKILL_CLAUSES.get(gap.lower(), f"leveraging {gap} to optimize operations")
+                        rephrased_clean = rephrased.rstrip(".,; ")
+                        rephrased = f"{rephrased_clean}, {clause}"
+                    
+                    if not rephrased.endswith("."):
+                        rephrased += "."
+                    enhanced_projects.append(rephrased)
             
         rewritten = "\n".join([f"• {p}" for p in enhanced_projects])
         
