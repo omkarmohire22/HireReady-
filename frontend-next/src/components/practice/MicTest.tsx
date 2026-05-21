@@ -48,6 +48,7 @@ export default function MicTest({ onNext }: MicTestProps) {
       const dataArr = new Uint8Array(analyser.frequencyBinCount);
 
       const animate = () => {
+        if (!analyserRef.current) return;
         analyser.getByteFrequencyData(dataArr);
         const avg = dataArr.reduce((a, b) => a + b, 0) / dataArr.length;
         setVolume(Math.round((avg / 255) * 100));
@@ -55,7 +56,6 @@ export default function MicTest({ onNext }: MicTestProps) {
         rafRef.current = requestAnimationFrame(animate);
       };
       animate();
-      setStatus('ok');
     } catch {
       setStatus('error');
     }
@@ -140,11 +140,22 @@ export default function MicTest({ onNext }: MicTestProps) {
           >
             <Mic size={16} style={{ marginRight: 8 }} /> Test Microphone
           </motion.button>
+        ) : status === 'testing' ? (
+          <motion.button
+            className="btn-ghost"
+            style={{ padding: '12px 20px' }}
+            onClick={() => { stopTest(); setStatus('ok'); }}
+            whileHover={hoverLift}
+            whileTap={tapDown}
+            transition={{ type: 'spring', stiffness: 260, damping: 18 }}
+          >
+            Stop Test
+          </motion.button>
         ) : (
           <motion.button
             className="btn-ghost"
             style={{ padding: '12px 20px' }}
-            onClick={() => { stopTest(); setStatus('idle'); }}
+            onClick={startTest}
             whileHover={hoverLift}
             whileTap={tapDown}
             transition={{ type: 'spring', stiffness: 260, damping: 18 }}
