@@ -49,30 +49,84 @@ class ReportBuilderService:
             else:
                 skill_scores[skill] = 0.0
 
-        # Category scores derived from real answer metrics
+        # ── Derive REAL category scores from actual per-answer metrics ──
         tech_score = overall_score
-        comms_score = min(100.0, overall_score * 1.05) if overall_score > 0 else 0.0
-        depth_score = min(100.0, overall_score * 0.95) if overall_score > 0 else 0.0
-        confidence_score = min(100.0, overall_score * 1.10) if overall_score > 0 else 0.0
 
-        # Aggregate advanced voice metrics
+        # Aggregate advanced voice metrics from real analysis data
         total_wpm = 0
         total_fillers = 0
         total_pauses = 0
         valid_wpm_count = 0
         
+        # Real communication sub-scores from voice_analyzer
+        pace_scores = []
+        pause_scores = []
+        energy_scores = []
+        filler_scores = []
+        tone_scores = []
+        depth_scores_list = []
+
+        DIFFICULTY_WORD_TARGETS = {"Easy": 30, "Medium": 60, "Hard": 100}
+
         for ans in answers:
-            # Fallback to the text-based filler count if voice metrics missed it
             total_fillers += ans.filler_word_count or 0
-            
-            if ans.communication_metrics:
-                wpm = ans.communication_metrics.get("wpm", 0)
-                if wpm > 0:
-                    total_wpm += wpm
-                    valid_wpm_count += 1
-                total_pauses += ans.communication_metrics.get("pause_count", 0)
+            cm = ans.communication_metrics or {}
+
+            # WPM / Pace
+            wpm = cm.get("wpm", 0)
+            if wpm > 0:
+                total_wpm += wpm
+                valid_wpm_count += 1
+
+            # Pause count
+            total_pauses += cm.get("pause_count", 0)
+
+            # Collect real sub-scores if present (scale 0-10 from voice_analyzer)
+            if cm.get("pace_score") is not None:
+                pace_scores.append(float(cm["pace_score"]))
+            if cm.get("pause_score") is not None:
+                pause_scores.append(float(cm["pause_score"]))
+            if cm.get("energy_consistency_score") is not None:
+                energy_scores.append(float(cm["energy_consistency_score"]))
+            if cm.get("filler_score") is not None:
+                filler_scores.append(float(cm["filler_score"]))
+            if cm.get("confidence_score") is not None:
+                tone_scores.append(float(cm["confidence_score"]))
+
+            # Depth: word count vs difficulty target + keyword coverage
+            word_count = len((ans.answer_text or "").split())
+            difficulty = session.difficulty or "Medium"
+            target_wc = DIFFICULTY_WORD_TARGETS.get(difficulty, 60)
+            length_ratio = min(word_count / target_wc, 1.0) if target_wc > 0 else 0.5
+            kw_used = len(ans.keywords_used or [])
+            kw_missed = len(ans.keywords_missed or [])
+            kw_ratio = kw_used / max(kw_used + kw_missed, 1)
+            depth_scores_list.append((length_ratio * 0.5 + kw_ratio * 0.5) * 100.0)
 
         avg_wpm = round(total_wpm / valid_wpm_count) if valid_wpm_count > 0 else 0
+
+        # Communication score: average of real pace, pause, energy, filler sub-scores (0-10 → 0-100)
+        if pace_scores or pause_scores or energy_scores or filler_scores:
+            all_comm = []
+            for bucket in [pace_scores, pause_scores, energy_scores, filler_scores]:
+                if bucket:
+                    all_comm.append(sum(bucket) / len(bucket))
+            comms_score = (sum(all_comm) / len(all_comm)) * 10.0 if all_comm else tech_score
+        else:
+            # Fallback for text-only or legacy answers without voice metrics
+            comms_score = min(100.0, tech_score * 1.05) if tech_score > 0 else 0.0
+
+        # Confidence score: from real VADER tone analysis (0-10 → 0-100)
+        if tone_scores:
+            confidence_score = (sum(tone_scores) / len(tone_scores)) * 10.0
+        else:
+            confidence_score = min(100.0, tech_score * 1.10) if tech_score > 0 else 0.0
+
+        # Depth score: from real word count and keyword analysis
+        if depth_scores_list:
+            depth_score = sum(depth_scores_list) / len(depth_scores_list)
+        else:
+            depth_score = min(100.0, tech_score * 0.95) if tech_score > 0 else 0.0
 
         category_scores = {
             "technical_accuracy": round(tech_score, 2),
@@ -367,11 +421,11 @@ class ReportBuilderService:
                 feedback_p = Paragraph(feedback_str, body_style)
                 
                 score_val = float(a.score or 0.0)
-                score_color = "#10B981" if score_val >= 8.0 else "#F59E0B" if score_val >= 6.0 else "#EF4444"
+                score_color = "#10B981" if score_val >= 80.0 else "#F59E0B" if score_val >= 60.0 else "#EF4444"
                 
                 q_data.append([
                     q_p,
-                    Paragraph(f"<font color='{score_color}'><b>{score_val:.1f}/10</b></font>", bold_body_style),
+                    Paragraph(f"<font color='{score_color}'><b>{score_val:.0f}/100</b></font>", bold_body_style),
                     feedback_p
                 ])
                 

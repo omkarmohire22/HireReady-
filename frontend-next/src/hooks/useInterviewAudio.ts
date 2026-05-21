@@ -10,6 +10,11 @@ export interface VoiceAnalysis {
   pause_count?: number;
   energy_consistency_score?: number;
   filler_words_used?: string[];
+  // Sub-scores (0-10 scale) from voice_analyzer for real report generation
+  pace_score?: number;
+  pause_score?: number;
+  filler_score?: number;
+  overall_communication_score?: number;
 }
 
 export function useInterviewAudio(questionText: string, paused: boolean = false) {
@@ -329,6 +334,11 @@ export function useInterviewAudio(questionText: string, paused: boolean = false)
           pause_count: data.analysis.metrics.long_pauses,
           energy_consistency_score: data.analysis.metrics.energy_consistency_score,
           filler_words_used: data.analysis.metrics.filler_words_used,
+          // Sub-scores (0-10 scale) for real report generation
+          pace_score: data.analysis.metrics.pace_score,
+          pause_score: data.analysis.metrics.pause_score,
+          filler_score: data.analysis.metrics.filler_score,
+          overall_communication_score: data.analysis.overall_communication_score,
         });
       }
     } catch (err) {
