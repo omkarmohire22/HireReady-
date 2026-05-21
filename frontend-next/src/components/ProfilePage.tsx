@@ -33,7 +33,7 @@ export default function ProfilePage() {
     const fetchData = async () => {
       try {
         const token = localStorage.getItem('token');
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
         
         const [uRes, sRes, rRes] = await Promise.all([
           fetch('/api/auth/me', { headers }),

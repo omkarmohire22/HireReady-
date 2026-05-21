@@ -22,7 +22,7 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
   const pathname = usePathname();
 
   const pageName = Object.entries(PAGE_NAMES)
-    .find(([k]) => pathname === k || pathname.startsWith(k + '/'))?.[1] ?? 'HireReady';
+    .find(([k]) => pathname === k || (pathname?.startsWith(k + '/') ?? false))?.[1] ?? 'HireReady';
 
   return (
     <header style={{

@@ -65,7 +65,7 @@ export default function Sidebar({ closeMobile }: SidebarProps) {
           <p className="nav-group-label">Main</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
             {NAV.map(item => {
-              const active = pathname === item.href || pathname.startsWith(item.href + '/');
+              const active = pathname === item.href || (pathname?.startsWith(item.href + '/') ?? false);
               const Icon = item.icon;
               return (
                 <Link

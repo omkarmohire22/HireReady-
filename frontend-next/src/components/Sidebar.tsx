@@ -21,7 +21,7 @@ export default function Sidebar({ closeMobile }: { closeMobile?: () => void }) {
       <Link href="/dashboard" className="mb-6 flex items-center gap-2 text-lg font-semibold font-[var(--font-heading)]"><Brain size={18} className="text-[#6C63FF]" />HireReady</Link>
       <nav className="space-y-2">
         {items.map((item) => {
-          const active = pathname.startsWith(item.href);
+          const active = pathname?.startsWith(item.href) ?? false;
           const Icon = item.icon;
           return (
             <motion.div whileHover={{ x: 2 }} key={item.href}>

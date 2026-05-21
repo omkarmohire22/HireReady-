@@ -432,7 +432,7 @@ export default function SettingsPage() {
                   <button
                     key={id}
                     onClick={() => {
-                      setThemeMode(id);
+                      setThemeMode(id as 'dark' | 'light');
                       if ((id === 'dark') !== isDark) {
                         toggle();
                       }

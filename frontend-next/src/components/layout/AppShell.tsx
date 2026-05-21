@@ -14,7 +14,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const { data: session } = useSession();
 
   // Landing page and auth pages get no shell
-  const isFullPage = pathname === '/' || pathname.startsWith('/auth');
+  const isFullPage = pathname === '/' || (pathname?.startsWith('/auth') ?? false);
 
   useEffect(() => {
     if (isFullPage) return;

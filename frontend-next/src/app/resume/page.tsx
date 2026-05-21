@@ -231,7 +231,7 @@ export default function ResumeAnalyzerPage() {
     const addedSkills = gaps.slice(0, 3);
     
     const newSkillsList = [...skills];
-    addedSkills.forEach(s => {
+    addedSkills.forEach((s: string) => {
       if (!newSkillsList.some(ex => ex.toLowerCase() === s.toLowerCase())) {
         newSkillsList.push(s);
       }

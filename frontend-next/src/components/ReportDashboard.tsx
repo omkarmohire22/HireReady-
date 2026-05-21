@@ -67,7 +67,7 @@ export default function ReportDashboard({ sessionId }: { sessionId?: string | nu
       setError(null);
       try {
         const token = localStorage.getItem('token');
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
 
         // Step 1: Try to get existing report, or generate one
         let sid = sessionId;
