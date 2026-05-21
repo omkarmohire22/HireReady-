@@ -134,7 +134,7 @@ export default function SkillAlignment({ onNext, onBack }: SkillAlignmentProps) 
   return (
     <div className="fade-up space-y-6">
       <div className="text-center">
-        <h2 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800 }} className="text-2xl md:text-3xl mb-2 text-white">
+        <h2 style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, color: 'var(--text-high)' }} className="text-2xl md:text-3xl mb-2">
           Role &amp; Skill Alignment
         </h2>
         <p style={{ color: 'var(--text-muted)' }} className="text-sm md:text-base">
