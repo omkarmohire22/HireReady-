@@ -162,8 +162,68 @@ export function useInterviewAudio(questionText: string, paused: boolean = false)
     }
   }, [questionText]);
 
+  // ── Helper: Initialize & Start Web Speech API ──────────────────────────
+  const startSpeechRecognition = useCallback(() => {
+    // If recognition is already active, stop it first to start fresh
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.abort();
+      } catch (e) {}
+      recognitionRef.current = null;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) return;
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onresult = (event: any) => {
+        let currentTranscript = '';
+        for (let i = 0; i < event.results.length; i++) {
+          currentTranscript += event.results[i][0].transcript + ' ';
+        }
+        const text = currentTranscript.trim();
+        setTranscription(text);
+        transcriptRef.current = text;
+      };
+
+      recognition.onend = () => {
+        // Auto-restart if user is still answering, stream is alive, and not paused
+        if (streamRef.current && recognitionRef.current === recognition && !paused) {
+          // Use a short timeout to prevent rapid-fire restarts or crashing browser engine
+          setTimeout(() => {
+            if (streamRef.current && recognitionRef.current === recognition && !paused) {
+              try {
+                recognition.start();
+              } catch (e) {
+                // ignore
+              }
+            }
+          }, 300);
+        }
+      };
+
+      recognition.onerror = (e: any) => {
+        console.warn('Speech recognition error:', e.error, e);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (e) {
+      console.warn('Speech recognition failed to start:', e);
+    }
+  }, [paused]);
+
   // ── Step 2: Mic listening + live waveform ───────────────────────────────
   const startListening = async () => {
+    // 1. Start SpeechRecognition immediately in parallel to prevent missing early speech
+    startSpeechRecognition();
+
+    // 2. Request mic stream for visualizer and MediaRecorder concurrently
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -204,44 +264,6 @@ export function useInterviewAudio(questionText: string, paused: boolean = false)
         console.warn('MediaRecorder unavailable:', e);
       }
 
-      // Initialize Web Speech API for real-time transcription
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = 'en-US';
-        
-        recognition.onresult = (event: any) => {
-          let currentTranscript = '';
-          for (let i = 0; i < event.results.length; i++) {
-            currentTranscript += event.results[i][0].transcript + ' ';
-          }
-          const text = currentTranscript.trim();
-          setTranscription(text);
-          transcriptRef.current = text;
-        };
-        
-        recognition.onend = () => {
-          // Auto-restart if user is still actively speaking and microphone stream is alive
-          if (streamRef.current && recognitionRef.current && !paused) {
-            try {
-              recognitionRef.current.start();
-            } catch (e) {
-              // ignore if already started
-            }
-          }
-        };
-        
-        recognition.onerror = (e: any) => console.warn('Speech recognition error', e);
-        try {
-          recognitionRef.current = recognition;
-          recognition.start();
-        } catch (e) {
-          console.warn('Speech recognition failed to start', e);
-        }
-      }
-
       const updateData = () => {
         if (!analyserRef.current) return;
         analyserRef.current.getByteFrequencyData(dataArray);
@@ -265,14 +287,17 @@ export function useInterviewAudio(questionText: string, paused: boolean = false)
             if (mediaRecorderRef.current?.state === 'recording') {
               mediaRecorderRef.current.stop();
             }
-          }, 2000);
+          }, 4500); // Increased from 2s to 4.5s for more natural thinking pauses
         }
         rafRef.current = requestAnimationFrame(updateData);
       };
       updateData();
     } catch (err) {
-      console.warn('Mic access denied:', err);
-      setTranscription('Microphone not available — type your answer instead.');
+      console.warn('Mic access denied for visualizer/recorder:', err);
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        setTranscription('Microphone not available — type your answer instead.');
+      }
     }
   };
 
@@ -409,15 +434,13 @@ export function useInterviewAudio(questionText: string, paused: boolean = false)
         try { window.speechSynthesis.resume(); } catch (e) {}
       }
       if (sessionState === 'USER_ANSWERING') {
-        if (recognitionRef.current) {
-          try { recognitionRef.current.start(); } catch (e) {}
-        }
+        startSpeechRecognition();
         if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'paused') {
           try { mediaRecorderRef.current.resume(); } catch (e) {}
         }
       }
     }
-  }, [paused, sessionState]);
+  }, [paused, sessionState, startSpeechRecognition]);
 
   useEffect(() => () => { stopSession(); }, [stopSession]);
 

@@ -4,8 +4,8 @@ import whisper
 # Load model once when module is imported
 # Use "base" for balance of speed and accuracy
 # To prevent reloading on every request, we instantiate it here.
-print("Loading Whisper model (base)...")
-whisper_model = whisper.load_model("base")
+print("Loading Whisper model (tiny)...")
+whisper_model = whisper.load_model("tiny")
 print("Whisper model loaded.")
 
 def transcribe_audio(audio_path: str) -> dict:
