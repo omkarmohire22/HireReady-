@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:password@db:5432/hireready
+      - JWT_SECRET=change_me_in_production
+      - GEMINI_API_KEY=your_gemini_key_here
+    volumes:
+      - uploads_data:/app/uploads
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=hireready
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+
+volumes:
+  uploads_data:
+  pg_data:
